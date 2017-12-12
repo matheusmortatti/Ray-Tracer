@@ -15,7 +15,7 @@ object init_objects();
 sphere_collection init_spheres();
 vec3* init_lights();
 int check_intersection(object obj, sphere_collection spheres, vec3 *P, int *index, vec3 orig, vec3 dir);
-void init_SDL(SDL_Window* &window, SDL_Surface* &screenSurface, SDL_Renderer* &renderer);
+void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
 template<class T>
 T clamp(T value, T min, T max)
@@ -41,23 +41,17 @@ int main() {
 	/**
 	 * Create SDL Window
 	 **/
-
 	SDL_Window *window = NULL;
-	SDL_Surface *screenSurface = NULL;
 	SDL_Renderer *renderer = NULL;
 	SDL_Texture *texture = NULL;
 
-	init_SDL(window, screenSurface, renderer);
+	init_SDL(window, renderer);
 
 	texture = SDL_CreateTexture (
 				        renderer,
 				        SDL_PIXELFORMAT_ARGB8888,
 				        SDL_TEXTUREACCESS_STREAMING,
 				        CANVAS_WIDTH, CANVAS_HEIGHT );
-
-
-
-	// printf("P3\n%d  %d  %d\n", CANVAS_WIDTH, CANVAS_HEIGHT, 255);
 
 
 	for(i = 0; i < CANVAS_HEIGHT; i++) {
@@ -126,23 +120,6 @@ int main() {
 		
 	}
 
-	// // Print the result on the screen
-	// for(i = 0; i < CANVAS_HEIGHT; i++) {
-	// 	for(j = 0; j < CANVAS_WIDTH; j++) {
-	// 		// int x = (int)abs(frameBuffer[i*CANVAS_WIDTH + j].x),
-	// 		// 	y = (int)abs(frameBuffer[i*CANVAS_WIDTH + j].y),
-	// 		// 	z = (int)abs(frameBuffer[i*CANVAS_WIDTH + j].z);
-	// 		//printf("%d %d %d ", x, y, z);
-
-	// 		// SDL_LockSurface(screenSurface);
-	// 		// put_pixel(screenSurface, j, i, frameBuffer[i*CANVAS_WIDTH + j]);
-	// 		// SDL_UnlockSurface(screenSurface);
-	// 		SDL_SetRenderDrawColor(renderer, x, y, z, 1);
-	// 		SDL_RenderDrawPoint(renderer, j, i);
-	// 	}
-	// 	//printf("\n");
-	// }
-
 	SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
 
 	/**
@@ -165,10 +142,13 @@ int main() {
 			}
 		}
 
-		//SDL_UpdateWindowSurface(window);
 		SDL_RenderCopy( renderer, texture, NULL, NULL );
 		SDL_RenderPresent(renderer);
 	}
+
+	SDL_DestroyRenderer( renderer );
+    SDL_DestroyWindow( window );
+    SDL_Quit();
 
 	return 0;
 }
@@ -180,7 +160,7 @@ void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
 	*pixel = SDL_MapRGB(screenSurface->format, 255, 255, 255);
 }
 
-void init_SDL(SDL_Window* &window, SDL_Surface* &screenSurface, SDL_Renderer* &renderer)
+void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
 {
 
 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -202,7 +182,6 @@ void init_SDL(SDL_Window* &window, SDL_Surface* &screenSurface, SDL_Renderer* &r
 		}
 		else
 		{
-			//screenSurface = SDL_GetWindowSurface(window);
 			renderer = SDL_CreateRenderer (
 						        window,
 						        -1,
