@@ -9,7 +9,7 @@
 #define CANVAS_WIDTH 723
 #define NUM_OBJ 1
 #define NUM_SPHERE 1
-#define NUM_LIGHTS 1
+#define NUM_LIGHTS 2
 
 object init_objects();
 sphere_collection init_spheres();
@@ -18,7 +18,7 @@ int check_intersection(object obj, sphere_collection spheres, vec3 *P, int *inde
 void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
 template<class T>
-T clamp(T value, T min, T max)
+T clamp(int value, int min, int max)
 {
 	return value < min ? min : (value > max ? max : value);
 }
@@ -258,8 +258,8 @@ vec3* init_lights() {
 	vec3 light0 = {.x = 0, .y = 10, .z = -1.0};
 	lights[0] = light0;
 
-	// vec3 light1 = {.x = 0, .y = 10, .z = -1.0};
-	// lights[1] = light1;
+	vec3 light1 = {.x = 0, .y = 10, .z = 1.0};
+	lights[1] = light1;
 
 	return lights;
 }
