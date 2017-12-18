@@ -2,6 +2,7 @@
 #define MATHS_H
 
 #include <stdio.h>
+#include <iostream>
 #include <math.h>
 
 typedef struct vec3 {

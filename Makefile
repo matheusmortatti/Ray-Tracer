@@ -4,7 +4,7 @@
 
 #changed as this option was given in path
 CC = g++
-CFLAGS = -lm `sdl2-config --cflags --libs`
+CFLAGS = -lm `sdl2-config --cflags --libs` -fopenmp
 LDFLAGS =
 
 TARGET = raytracer
