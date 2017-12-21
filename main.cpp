@@ -9,21 +9,28 @@
 
 #define CANVAS_HEIGHT 1080
 #define CANVAS_WIDTH 1920
-#define NUM_OBJ 0
-#define NUM_SPHERE 1
 #define NUM_LIGHTS 2
+#define NUM_SPHERES 1
+#define NUM_TRIANGLES 3
 
 std::vector<triangle> init_triangles();
 std::vector<sphere> init_spheres();
 std::vector<vec3> init_lights();
-int check_intersection(std::vector<triangle> obj, std::vector<sphere> spheres, vec3 *P, int *index, vec3 orig, vec3 dir);
+
+#pragma omp declare target
+int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, vec3 *P, int *index, vec3 orig, vec3 dir);
+#pragma omp end declare target
+
 void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
+
+#pragma omp declare target
 template<class T>
 T clamp(int value, int min, int max)
 {
 	return value < min ? min : (value > max ? max : value);
 }
+#pragma omp end declare target
 
 int main() {
 	int i, j, l;
@@ -34,18 +41,22 @@ int main() {
 	frameBuffer = new unsigned char[4 * CANVAS_HEIGHT * CANVAS_WIDTH];
 
 	// Init scene
-	std::vector<triangle> tris = init_triangles();
-	std::vector<sphere> spheres = init_spheres();
-	std::vector<vec3> lights = init_lights();
+	std::vector<triangle> 	t 	= init_triangles();
+	std::vector<sphere>		s   = init_spheres();
+	std::vector<vec3> 		lg 	= init_lights();
 
-	vec3 orig = {.x = 0.0, .y = 0.0, .z = 0.0};
+	triangle *tris = t.data();
+	sphere *spheres = s.data();
+	vec3 *lights = lg.data();
+
+	int t_size = t.size(), s_size = s.size(), l_size = lg.size();
 
 	/**
 	 * Create SDL Window
 	 **/
-	SDL_Window *window = NULL;
-	SDL_Renderer *renderer = NULL;
-	SDL_Texture *texture = NULL;
+	SDL_Window 	  *window 	= NULL;
+	SDL_Renderer  *renderer = NULL;
+	SDL_Texture   *texture 	= NULL;
 
 	init_SDL(window, renderer);
 
@@ -56,15 +67,18 @@ int main() {
 				        CANVAS_WIDTH, CANVAS_HEIGHT );
 
 
-#pragma omp parallel for collapse(2) schedule(dynamic) private(i,j,l) shared(frameBuffer)
+#pragma omp target map(to: i,j,l,fov,aspectRatio, tris[:NUM_TRIANGLES], spheres[:NUM_SPHERES], lights[:NUM_LIGHTS]) \
+				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
+//#pragma omp parallel for /*collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)*/
 	for(i = 0; i < CANVAS_HEIGHT; i++) {
-		for(j = 0; j < CANVAS_WIDTH; j++) {		
+		for(j = 0; j < CANVAS_WIDTH; j++) {
 
 			// Canvas to world transformation
-			float px = (2* ((j + 0.5) / CANVAS_WIDTH) - 1) * 
+			float px = (2* ((j + 0.5) / (float)CANVAS_WIDTH) - 1) * 
 										tan(fov / 2 * M_PI / 180) * aspectRatio;
-			float py = (1 - 2* ((i + 0.5) / CANVAS_HEIGHT)) * tan(fov / 2 * M_PI / 180);
+			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(fov / 2 * M_PI / 180);
 			vec3 rayP = {.x = px, .y = py, .z = -1.0};
+			vec3 orig = {.x = 0.0, .y = 0.0, .z = 0.0};
 
 			// Ray direction
 			vec3 dir = sub_vec3(rayP, orig);
@@ -77,14 +91,14 @@ int main() {
 			frameBuffer[fb_offset + 0] = 0;
 			frameBuffer[fb_offset + 1] = 0;
 			frameBuffer[fb_offset + 2] = 0;
-			frameBuffer[fb_offset + 3] = SDL_ALPHA_OPAQUE;
+			frameBuffer[fb_offset + 3] = 1.0;
 
 			vec3 P;
 			int index;
 
 			// Check to see if there is an intersection between the camera ray and
 			// all the objects
-			int check = check_intersection(tris, spheres, &P, &index, orig, dir);			
+			int check = check_intersection(tris, NUM_TRIANGLES, spheres, NUM_SPHERES, &P, &index, orig, dir);			
 			if(check != 0) {
 
 				// normal of the object intersected
@@ -99,7 +113,7 @@ int main() {
 
 				// For all the lights in the world, check to see if
 				// the intersection point is lit by any of them
-				for(l = 0; l < lights.size(); l++) {
+				for(l = 0; l < NUM_LIGHTS; l++) {
 
 					// Ray from point to light
 					vec3 rayDir = sub_vec3(lights[l], P);
@@ -110,7 +124,7 @@ int main() {
 					vec3 P1;
 
 					// Check to see if there isn't any objects in the way of the ray
-					check = check_intersection(tris, spheres, &P1, &index, P, rayDir) == 0 ? 1 : 0;
+					check = check_intersection(tris, NUM_TRIANGLES, spheres, NUM_SPHERES, &P1, &index, P, rayDir) == 0 ? 1 : 0;
 					// Calculate angle between the normal and the ray
 					// so we can calculate brightness
 					float angle = dotProduct(n, rayDir);
@@ -127,6 +141,7 @@ int main() {
 		
 	}
 
+	/* Draw the image to the texture */
 	SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
 
 	/**
@@ -206,13 +221,13 @@ std::vector<triangle> init_triangles() {
 				   .p2 = {.x = 10.0, .y = -5.0, .z = -10.0},
 				   .p3 = {.x = -10.0, .y = -5.0, .z = -2.0},
 				   .color = {.x = 255, .y = 255, .z = 255}};
-	tris.emplace_back(t4);
+	tris.push_back(t4);
 
 	triangle t5 = {.p1 = {.x = -10.0, .y = -5.0, .z = -2.0},
 				   .p2 = {.x = 10.0, .y = -5.0, .z = -10.0},
 				   .p3 = {.x = -10.0, .y = -5.0, .z = -10.0},
 				   .color = {.x = 255, .y = 255, .z = 255}};
-	tris.emplace_back(t5);
+	tris.push_back(t5);
 
 	return tris;
 }
@@ -241,7 +256,7 @@ std::vector<vec3> init_lights() {
 	return lights;
 }
 
-int check_intersection(std::vector<triangle> tris, std::vector<sphere> spheres, vec3 *P, int *index, vec3 orig, vec3 dir) {
+int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, vec3 *P, int *index, vec3 orig, vec3 dir) {
 	int i, index_t, index_s;
 	
 	int t_has_intersected = false;
@@ -250,7 +265,7 @@ int check_intersection(std::vector<triangle> tris, std::vector<sphere> spheres, 
 	vec3 p_triangle = {.x = FLT_MAX, .y = FLT_MAX, .z = FLT_MAX};
 	vec3 p_sphere = {.x = FLT_MAX, .y = FLT_MAX, .z = FLT_MAX};
 
-	for(i = 0; i < tris.size(); i++) {
+	for(i = 0; i < t_size; i++) {
 		if(rayTriangleIntersects(orig, dir, tris[i], P)) {
 			if(length_vec3(p_triangle) > length_vec3(*P)) {
 				index_t = i;
@@ -260,7 +275,7 @@ int check_intersection(std::vector<triangle> tris, std::vector<sphere> spheres, 
 		}
 	}
 
-	for(i = 0; i < spheres.size(); i++) {
+	for(i = 0; i < s_size; i++) {
 		if(raySphereIntersects(orig, dir, spheres[i], P)) {
 			if(length_vec3(p_sphere) > length_vec3(*P)) {
 				index_s = i;
@@ -282,4 +297,6 @@ int check_intersection(std::vector<triangle> tris, std::vector<sphere> spheres, 
 		*index = index_s;
 		return 2;
 	}
+
+	return 0;
 }

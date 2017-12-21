@@ -2,9 +2,10 @@
 # Hello World
 # ####################################################
 
+# -omptargets=x86_64-unknown-linux-spark -fopenmp-targets=x86_64-unknown-linux-gnu 
 #changed as this option was given in path
-CC = g++
-CFLAGS = -lm `sdl2-config --cflags --libs` -fopenmp
+CC = clang++
+CFLAGS = -g -lm `sdl2-config --cflags --libs` -fopenmp -omptargets=x86_64-unknown-linux-spark
 LDFLAGS =
 
 TARGET = raytracer

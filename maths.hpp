@@ -4,33 +4,25 @@
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
+#include "omp.h"
 
-typedef struct vec3 {
+#pragma omp declare target
+struct vec3 {
 	float x, y, z;
-} vec3;
+};
 
-typedef struct vec4 {
+struct vec4 {
 	float x, y, z, a;
-} vec4;
+};
 
-typedef struct triangle {
+struct triangle {
 	vec3 p1, p2, p3, color;
-} triangle;
+};
 
-typedef struct sphere {
+struct sphere {
 	vec3 orig, color;
 	float radius;
-} sphere;
-
-typedef struct object {
-	triangle *t;
-	int n_triangles;
-} object;
-
-typedef struct sphere_collection {
-	sphere *s;
-	int n_spheres;
-} sphere_collection;
+};
 
 vec3 scale_vec3(vec3 v, float f);
 vec4 scale_vec4(vec4 v, float f);
@@ -58,6 +50,7 @@ float dotProduct(vec3 v1, vec3 v2);
 
 int rayTriangleIntersects(vec3 orig, vec3 dir, triangle tg, vec3 *P);
 int raySphereIntersects(vec3 orig, vec3 dir, sphere s, vec3 *P);
+#pragma omp end declare target
 
 //////////////////////////////////////
 // debug functions
