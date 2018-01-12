@@ -69,7 +69,7 @@ int main() {
 
 #pragma omp target map(to: i,j,l,fov,aspectRatio, tris[:NUM_TRIANGLES], spheres[:NUM_SPHERES], lights[:NUM_LIGHTS]) \
 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
-//#pragma omp parallel for /*collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)*/
+#pragma omp parallel for collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)
 	for(i = 0; i < CANVAS_HEIGHT; i++) {
 		for(j = 0; j < CANVAS_WIDTH; j++) {
 
@@ -256,6 +256,7 @@ std::vector<vec3> init_lights() {
 	return lights;
 }
 
+#pragma omp declare target
 int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, vec3 *P, int *index, vec3 orig, vec3 dir) {
 	int i, index_t, index_s;
 	
@@ -300,3 +301,4 @@ int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, 
 
 	return 0;
 }
+#pragma omp end declare target

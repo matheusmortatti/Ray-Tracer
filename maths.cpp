@@ -1,5 +1,6 @@
 #include "maths.hpp"
 
+#pragma omp declare target
 vec3 scale_vec3(vec3 v, float f) {
 	vec3 res = {.x = v.x * f,
 				.y = v.y * f,
@@ -195,7 +196,7 @@ int raySphereIntersects(vec3 orig, vec3 dir, sphere s, vec3 *P) {
 
 	return 1;
 }
-
+#pragma omp end declare target
 ////////////////////////////////////
 // Debug
 ////////////////////////////////////
