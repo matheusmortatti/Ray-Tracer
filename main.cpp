@@ -3,6 +3,7 @@
 #include <vector>
 #include <limits.h>
 #include <cfloat>
+#include <thread>
 #include "omp.h"
 #include "SDL.h"
 #include "maths.hpp"
@@ -23,6 +24,7 @@ int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, 
 
 void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
+void render(unsigned char *frameBuffer, int fov, triangle *tris, sphere *spheres, vec3 *lights);
 
 #pragma omp declare target
 template<class T>
@@ -33,8 +35,6 @@ T clamp(int value, int min, int max)
 #pragma omp end declare target
 
 int main() {
-	int i, j, l;
-	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 	int fov = 120;
 	unsigned char *frameBuffer;
 
@@ -45,11 +45,13 @@ int main() {
 	std::vector<sphere>		s   = init_spheres();
 	std::vector<vec3> 		lg 	= init_lights();
 
-	triangle *tris = t.data();
+	// Convert it to normal arrays for omp compatibility
+	triangle *tris 	= t.data();
 	sphere *spheres = s.data();
-	vec3 *lights = lg.data();
+	vec3 *lights 	= lg.data();
 
 	int t_size = t.size(), s_size = s.size(), l_size = lg.size();
+
 
 	/**
 	 * Create SDL Window
@@ -67,9 +69,54 @@ int main() {
 				        CANVAS_WIDTH, CANVAS_HEIGHT );
 
 
+	// Create thread and start rendering
+	std::thread render_thread(render,frameBuffer,fov,tris,spheres,lights);
+
+	/**
+	 * Keep the screen up until the user closes it
+	 **/
+	bool quit = false;
+	while(!quit)
+	{
+		SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
+        SDL_RenderClear( renderer );
+
+		SDL_Event event;
+		while(SDL_PollEvent(&event))
+		{
+			switch(event.type)
+			{
+				case SDL_QUIT:
+					quit = true;
+					break;
+			}
+		}
+
+		/* Draw the image to the texture */
+		SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
+		SDL_RenderCopy( renderer, texture, NULL, NULL );
+		SDL_RenderPresent(renderer);
+	}
+
+	SDL_DestroyRenderer( renderer );
+    SDL_DestroyWindow( window );
+    SDL_Quit();
+
+    // Join thread to wait for it to end before exiting
+    render_thread.join();
+
+	return 0;
+}
+
+void render(unsigned char *frameBuffer, int fov, triangle *tris, sphere *spheres, vec3 *lights)
+{
+	int i,j,l;
+	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
+
 #pragma omp target map(to: i,j,l,fov,aspectRatio, tris[:NUM_TRIANGLES], spheres[:NUM_SPHERES], lights[:NUM_LIGHTS]) \
 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)
+
 	for(i = 0; i < CANVAS_HEIGHT; i++) {
 		for(j = 0; j < CANVAS_WIDTH; j++) {
 
@@ -140,39 +187,6 @@ int main() {
 		}
 		
 	}
-
-	/* Draw the image to the texture */
-	SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
-
-	/**
-	 * Keep the screen up until the user closes it
-	 **/
-	bool quit = false;
-	while(!quit)
-	{
-		SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
-        SDL_RenderClear( renderer );
-
-		SDL_Event event;
-		while(SDL_PollEvent(&event))
-		{
-			switch(event.type)
-			{
-				case SDL_QUIT:
-					quit = true;
-					break;
-			}
-		}
-
-		SDL_RenderCopy( renderer, texture, NULL, NULL );
-		SDL_RenderPresent(renderer);
-	}
-
-	SDL_DestroyRenderer( renderer );
-    SDL_DestroyWindow( window );
-    SDL_Quit();
-
-	return 0;
 }
 
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
