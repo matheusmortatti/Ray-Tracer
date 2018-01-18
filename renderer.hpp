@@ -13,4 +13,7 @@
 #define NUM_TRIANGLES 3
 
 void render(unsigned char *frameBuffer, int fov, triangle *tris, sphere *spheres, vec3 *lights);
+
+#pragma omp declare target
 int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, vec3 *P, int *index, vec3 orig, vec3 dir);
+#pragma omp end declare target

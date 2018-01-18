@@ -81,6 +81,7 @@ void render(unsigned char *frameBuffer, int fov, triangle *tris, sphere *spheres
 	}
 }
 
+#pragma omp declare target
 int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, vec3 *P, int *index, vec3 orig, vec3 dir)
 {
 	int i, index_t, index_s;
@@ -126,3 +127,4 @@ int check_intersection(triangle *tris, int t_size, sphere *spheres, int s_size, 
 
 	return 0;
 }
+#pragma omp end declare target
