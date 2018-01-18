@@ -1,17 +1,14 @@
-# ####################################################
-# Hello World
-# ####################################################
-
+# CCFLAGS options for omp targets
 # -omptargets=x86_64-unknown-linux-spark -fopenmp-targets=x86_64-unknown-linux-gnu
-#changed as this option was given in path
+
 CC = clang++
-CCFLAGS = -fopenmp -omptargets=x86_64-unknown-linux-spark
+CCFLAGS = -fopenmp -std=c++0x -pthread
 LDFLAGS = -lm `sdl2-config --cflags --libs`
 
 TARGET = raytracer
 INC_DIR := -I.
 
-SRCS := main.cpp maths.cpp
+SRCS := main.cpp maths.cpp renderer.cpp
 OBJS := $(SRCS:.c=.o)
 
 #------------------------------------------------------
