@@ -9,9 +9,9 @@
 #include "renderer.hpp"
 #include "maths.hpp"
 
-std::vector<triangle> init_triangles();
-std::vector<sphere> init_spheres();
-std::vector<vec3> init_lights();
+int init_triangles(float**** tris, unsigned char*** colors);
+int init_spheres(float*** spheres, float** radius, unsigned char*** colors);
+int init_lights(float*** lights);
 
 void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
@@ -22,18 +22,14 @@ int main() {
 
 	frameBuffer = new unsigned char[4 * CANVAS_HEIGHT * CANVAS_WIDTH];
 
-	// Init scene
-	std::vector<triangle> 	t 	= init_triangles();
-	std::vector<sphere>		s   = init_spheres();
-	std::vector<vec3> 		lg 	= init_lights();
+	float ***tris, **spheres, *radius, **lights;
+	unsigned char **color_tri, **color_sphere;
 
-	// Convert it to normal arrays for omp compatibility
-	triangle *tris 	= t.data();
-	sphere *spheres = s.data();
-	vec3 *lights 	= lg.data();
+	int t_size, s_size, l_size;
 
-	int t_size = t.size(), s_size = s.size(), l_size = lg.size();
-
+	t_size = init_triangles(&tris, &color_tri);
+	s_size = init_spheres(&spheres, &radius, &color_sphere);
+	l_size = init_lights(&lights);
 
 	/**
 	 * Create SDL Window
@@ -50,9 +46,8 @@ int main() {
 				        SDL_TEXTUREACCESS_STREAMING,
 				        CANVAS_WIDTH, CANVAS_HEIGHT );
 
-
 	// Create thread and start rendering
-	std::thread render_thread(render,frameBuffer,fov,tris,spheres,lights);
+	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
 
 	/**
 	 * Keep the screen up until the user closes it
@@ -128,45 +123,47 @@ void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
 	}
 }
 
-std::vector<triangle> init_triangles() {
+int init_triangles(float**** tris, unsigned char*** colors)
+{
+	(*tris) = new float**[2];
+	(*colors) = new unsigned char*[2];
 
-	std::vector<triangle> tris;
+	(*tris)[0] = new float*[3];
 
-	triangle t4 = {.p1 = {.x = 10.0, .y = -5.0, .z = -2.0},
-				   .p2 = {.x = 10.0, .y = -5.0, .z = -10.0},
-				   .p3 = {.x = -10.0, .y = -5.0, .z = -2.0},
-				   .color = {.x = 255, .y = 255, .z = 255}};
-	tris.push_back(t4);
+	(*tris)[0][0] = new float[3]{10.0, -5.0, -2.0};
+	(*tris)[0][1] = new float[3]{10.0, -5.0, -10.0};
+	(*tris)[0][2] = new float[3]{-10.0, -5.0, -2.0};
+	(*colors)[0]  = new unsigned char[3]{255, 255, 255};
 
-	triangle t5 = {.p1 = {.x = -10.0, .y = -5.0, .z = -2.0},
-				   .p2 = {.x = 10.0, .y = -5.0, .z = -10.0},
-				   .p3 = {.x = -10.0, .y = -5.0, .z = -10.0},
-				   .color = {.x = 255, .y = 255, .z = 255}};
-	tris.push_back(t5);
+	(*tris)[1] = new float*[3];
 
-	return tris;
+	(*tris)[1][0] = new float[3]{-10.0, -5.0, -2.0};
+	(*tris)[1][1] = new float[3]{10.0, -5.0, -10.0};
+	(*tris)[1][2] = new float[3]{-10.0, -5.0, -10.0};
+	(*colors)[1]  = new unsigned char[3]{255, 255, 255};
+
+	return 2;
 }
 
-std::vector<sphere> init_spheres() {
-	std::vector<sphere> s;
+int init_spheres(float*** spheres, float** radius, unsigned char*** colors)
+{
+	(*spheres) = new float*[1];
+	(*radius)  = new float[1];
+	(*colors) = new unsigned char*[1];
 
-	sphere s0 = {.orig = {.x = 0, .y = 0, .z = -4.0}, 
-				 .color = {.x = 0, .y = 255, .z = 0}, 
-				 .radius = 1.0};
-	s.push_back(s0);
+	(*spheres)[0] = new float[3]{0.0, 0.0, -4.0};
+	(*colors)[0]  = new unsigned char[3]{0, 255, 0};
+	(*radius)[0] = 1.0;
 
-	return s;
+	return 1;
 }
 
-std::vector<vec3> init_lights() {
-	std::vector<vec3> lights;
+int init_lights(float*** lights)
+{
+	(*lights) = new float*[2];
 
+	(*lights)[0] = new float[3]{2.0, 5.0, -4.0};
+	(*lights)[1] = new float[3]{-2.0, 5.0, -4.0};
 
-	vec3 light0 = {.x = 2, .y = 5, .z = -4.0};
-	lights.push_back(light0);
-
-	vec3 light1 = {.x = -2, .y = 5, .z = -4.0};
-	lights.push_back(light1);
-
-	return lights;
+	return 2;
 }
