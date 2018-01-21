@@ -58,8 +58,6 @@ void render(unsigned char *frameBuffer, int fov,
 
 					// Ray from point to light
 					float* rayDir = sub_vec(lights[l], P);
-					
-
 					normalize(rayDir);
 
 					float P1[3];
@@ -75,8 +73,12 @@ void render(unsigned char *frameBuffer, int fov,
 						frameBuffer[fb_offset + 1] = clamp<int>(frameBuffer[fb_offset + 1] + check*(unsigned char)color[1]*angle, 0, 255);
 						frameBuffer[fb_offset + 2] = clamp<int>(frameBuffer[fb_offset + 2] + check*(unsigned char)color[2]*angle, 0, 255);
 					}
+					delete[] rayDir;
 				}
+
+				delete[] n;
 			}
+			delete[] dir;
 		}
 	}
 }

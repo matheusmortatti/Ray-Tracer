@@ -62,6 +62,9 @@ float* normal(float* p1, float* p2, float* p3)
 	c = cross_product(a, b);
 	normalize(c);
 
+	delete[] a;
+	delete[] b;
+
 	return c;
 }
 
@@ -98,32 +101,81 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 
 	// Se o produto escalar for quase zero, são paralelos
 	if(fabs(NdotRayDirection) < kEpsilon)
+	{
+		delete[] N;
 		return 0;
+	}
 
 	float d = dot_product(N, p1);
 	float t = (dot_product(N, orig) + d) / NdotRayDirection;
-	if (t < 0) return 0;
+	if (t < 0) 
+	{
+		delete[] N;
+		return 0;
+	}
 
+	float* scl = scale_vec(dir, t);
+	float* add = add_vec(orig, scl);
+	copy_array(P, add, 3);
+	delete[] scl;
+	delete[] add;
 
-	copy_array(P, add_vec(orig, scale_vec(dir, t)), 3);
 	float* C;
 
 	float* edge0 = sub_vec(p2, p1);
 	float* vp0 = sub_vec(P, p1);
 	C = cross_product(edge0, vp0);
-	if(dot_product(N, C) < 0) return 0;
+	if(dot_product(N, C) < 0) 
+	{
+		delete[] C;
+		delete[] N;
+		delete[] edge0;
+		delete[] vp0;
+		return 0;
+	}
+	delete[] C;
 
 
 	float* edge1 = sub_vec(p3, p2);
 	float* vp1 = sub_vec(P, p2);
 	C = cross_product(edge1, vp1);
-	if(dot_product(N, C) < 0) return 0;
+	if(dot_product(N, C) < 0) 
+	{
+		delete[] C;
+		delete[] N;
+		delete[] edge0;
+		delete[] vp0;
+		delete[] edge1;
+		delete[] vp1;
+		return 0;
+	}
+	delete[] C;
 
 
 	float* edge2 = sub_vec(p1, p3);
 	float* vp2 = sub_vec(P, p3);
 	C = cross_product(edge2, vp2);
-	if(dot_product(N, C) < 0) return 0;
+	if(dot_product(N, C) < 0) 
+	{
+		delete[] C;
+		delete[] N;
+		delete[] edge0;
+		delete[] vp0;
+		delete[] edge1;
+		delete[] vp1;
+		delete[] edge2;
+		delete[] vp2;
+		return 0;
+	}
+
+	delete[] C;
+	delete[] N;
+	delete[] edge0;
+	delete[] vp0;
+	delete[] edge1;
+	delete[] vp1;
+	delete[] edge2;
+	delete[] vp2;
 
 	return 1;
 }
@@ -139,7 +191,11 @@ int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, fl
 
 	// Solve quadratic equation
 	float discr = b * b - 4 * a * c;
-	if(discr < 0) return 0;
+	if(discr < 0) 
+	{
+		delete[] L;
+		return 0;
+	}
 	else if(discr == 0) t0 = t1 = - 0.5 * b / a;
 	else {
 		float q = (b > kEpsilon) ? 
@@ -153,11 +209,20 @@ int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, fl
 
 	if(t0 <= kEpsilon) {
 		t0 = t1;
-		if(t0 <= kEpsilon) return 0;
+		if(t0 <= kEpsilon) 
+		{
+			delete[] L;
+			return 0;
+		}
 	}
 
-	copy_array(P, add_vec(orig, scale_vec(dir, t0)), 3);
+	float* scl = scale_vec(dir, t0);
+	float* add = add_vec(orig, scl);
+	copy_array(P, add, 3);
 
+	delete[] scl;
+	delete[] add;
+	delete[] L;
 	return 1;
 }
 

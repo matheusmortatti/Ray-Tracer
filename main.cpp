@@ -82,6 +82,35 @@ int main() {
     // Join thread to wait for it to end before exiting
     render_thread.join();
 
+    for(int i = 0; i < t_size; i++)
+    {
+    	for(int j = 0; j < 3; j++)
+    	{
+    		delete[] tris[i][j];
+    	}
+    	delete[] tris[i];
+    	delete[] color_tri[i];
+    }
+    delete[] tris;
+    delete[] color_tri;
+
+    for(int i = 0; i < s_size; i++)
+    {	
+    	delete[] spheres[i];
+    	delete[] color_sphere[i];
+    }
+    delete[] spheres;
+    delete[] color_sphere;
+    delete[] radius;
+
+    for(int i = 0; i < l_size; i++)
+    {	
+    	delete[] lights[i];
+    }
+    delete[] lights;
+
+    delete[] frameBuffer;
+
 	return 0;
 }
 
@@ -133,14 +162,14 @@ int init_triangles(float**** tris, unsigned char*** colors)
 	(*tris)[0][0] = new float[3]{10.0, -5.0, -2.0};
 	(*tris)[0][1] = new float[3]{10.0, -5.0, -10.0};
 	(*tris)[0][2] = new float[3]{-10.0, -5.0, -2.0};
-	(*colors)[0]  = new unsigned char[3]{255, 255, 255};
+	(*colors)[0]  = new unsigned char[3]{255, 125, 125};
 
 	(*tris)[1] = new float*[3];
 
 	(*tris)[1][0] = new float[3]{-10.0, -5.0, -2.0};
 	(*tris)[1][1] = new float[3]{10.0, -5.0, -10.0};
 	(*tris)[1][2] = new float[3]{-10.0, -5.0, -10.0};
-	(*colors)[1]  = new unsigned char[3]{255, 255, 255};
+	(*colors)[1]  = new unsigned char[3]{255, 125, 125};
 
 	return 2;
 }
