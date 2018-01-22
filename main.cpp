@@ -9,9 +9,9 @@
 #include "renderer.hpp"
 #include "maths.hpp"
 
-int init_triangles(float**** tris, unsigned char*** colors);
-int init_spheres(float*** spheres, float** radius, unsigned char*** colors);
-int init_lights(float*** lights);
+int init_triangles(float** tris, unsigned char** colors);
+int init_spheres(float** spheres, float** radius, unsigned char** colors);
+int init_lights(float** lights);
 
 void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
@@ -22,8 +22,8 @@ int main() {
 
 	frameBuffer = new unsigned char[4 * CANVAS_HEIGHT * CANVAS_WIDTH];
 
-	float ***tris, **spheres, *radius, **lights;
-	unsigned char **color_tri, **color_sphere;
+	float *tris, *spheres, *radius, *lights;
+	unsigned char *color_tri, *color_sphere;
 
 	int t_size, s_size, l_size;
 
@@ -82,31 +82,13 @@ int main() {
     // Join thread to wait for it to end before exiting
     render_thread.join();
 
-    for(int i = 0; i < t_size; i++)
-    {
-    	for(int j = 0; j < 3; j++)
-    	{
-    		delete[] tris[i][j];
-    	}
-    	delete[] tris[i];
-    	delete[] color_tri[i];
-    }
     delete[] tris;
     delete[] color_tri;
 
-    for(int i = 0; i < s_size; i++)
-    {	
-    	delete[] spheres[i];
-    	delete[] color_sphere[i];
-    }
     delete[] spheres;
     delete[] color_sphere;
     delete[] radius;
 
-    for(int i = 0; i < l_size; i++)
-    {	
-    	delete[] lights[i];
-    }
     delete[] lights;
 
     delete[] frameBuffer;
@@ -152,47 +134,113 @@ void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
 	}
 }
 
-int init_triangles(float**** tris, unsigned char*** colors)
+int init_triangles(float** tris, unsigned char** colors)
 {
-	(*tris) = new float**[2];
-	(*colors) = new unsigned char*[2];
+	int t_size = 2;
 
-	(*tris)[0] = new float*[3];
+	(*tris) 	= new float[t_size * 9];
+	(*colors) 	= new unsigned char[t_size];
 
-	(*tris)[0][0] = new float[3]{10.0, -5.0, -2.0};
-	(*tris)[0][1] = new float[3]{10.0, -5.0, -10.0};
-	(*tris)[0][2] = new float[3]{-10.0, -5.0, -2.0};
-	(*colors)[0]  = new unsigned char[3]{255, 125, 125};
+	float v[2][9] = {
+						    {
+						    	10.0, -5.0, -2.0,
+						    	10.0, -5.0, -10.0,
+						    	-10.0, -5.0, -2.0,
+						    },
+						    {
+						    	-10.0, -5.0, -2.0,
+						    	10.0, -5.0, -10.0,
+						    	-10.0, -5.0, -10.0,
+						    }
+					    };
 
-	(*tris)[1] = new float*[3];
+	unsigned char c[2][3] = {
+							    {
+							    	255, 125, 125
+							    },
+							    {
+							    	255, 125, 125
+							    }
+						    };
 
-	(*tris)[1][0] = new float[3]{-10.0, -5.0, -2.0};
-	(*tris)[1][1] = new float[3]{10.0, -5.0, -10.0};
-	(*tris)[1][2] = new float[3]{-10.0, -5.0, -10.0};
-	(*colors)[1]  = new unsigned char[3]{255, 125, 125};
+	for(int i = 0; i < t_size; i++)
+	{
+		(*tris)[i * 9 + 0] = v[i][0];
+		(*tris)[i * 9 + 1] = v[i][1];
+		(*tris)[i * 9 + 2] = v[i][2];
+		(*tris)[i * 9 + 3] = v[i][3];
+		(*tris)[i * 9 + 4] = v[i][4];
+		(*tris)[i * 9 + 5] = v[i][5];
+		(*tris)[i * 9 + 6] = v[i][6];
+		(*tris)[i * 9 + 7] = v[i][7];
+		(*tris)[i * 9 + 8] = v[i][8];
+		(*colors)[i * 3 + 0] = c[i][0];
+		(*colors)[i * 3 + 1] = c[i][1];
+		(*colors)[i * 3 + 2] = c[i][2];
+	}
 
-	return 2;
+	return t_size;
 }
 
-int init_spheres(float*** spheres, float** radius, unsigned char*** colors)
+int init_spheres(float** spheres, float** radius, unsigned char** colors)
 {
-	(*spheres) = new float*[1];
-	(*radius)  = new float[1];
-	(*colors) = new unsigned char*[1];
+	int s_size = 1;
 
-	(*spheres)[0] = new float[3]{0.0, 0.0, -4.0};
-	(*colors)[0]  = new unsigned char[3]{0, 255, 0};
-	(*radius)[0] = 1.0;
+	(*spheres) = new float[s_size * 3];
+	(*radius)  = new float[s_size];
+	(*colors) = new unsigned char[s_size * 3];
 
-	return 1;
+	float v[1][3] = {
+					    {
+					    	0.0, 0.0, -4.0
+					    }
+				    };
+
+	float r[1] = { 1.0 };
+
+	unsigned char c[1][3] = {
+							    {
+							    	0, 255, 0
+							    }
+						    };
+
+	for(int i = 0; i < s_size; i++)
+	{
+		(*spheres)[i + 0] = v[i][0];
+		(*spheres)[i + 1] = v[i][1];
+		(*spheres)[i + 2] = v[i][2];
+
+		(*radius)[i] = r[i];
+
+		(*colors)[i + 0] = c[i][0];
+		(*colors)[i + 1] = c[i][1];
+		(*colors)[i + 2] = c[i][2];
+	}
+
+	return s_size;
 }
 
-int init_lights(float*** lights)
+int init_lights(float** lights)
 {
-	(*lights) = new float*[2];
+	int l_size = 2;
 
-	(*lights)[0] = new float[3]{2.0, 5.0, -4.0};
-	(*lights)[1] = new float[3]{-2.0, 5.0, -4.0};
+	(*lights) = new float[l_size * 3];
 
-	return 2;
+	float v[2][3] = {
+					    {
+					    	2.0, 5.0, -4.0
+					    },
+					    {
+					    	-2.0, 5.0, -4.0
+					    }
+				    };
+
+	for(int i = 0; i < l_size; i++)
+	{
+		(*lights)[i * 3 + 0] = v[i][0];
+		(*lights)[i * 3 + 1] = v[i][1];
+		(*lights)[i * 3 + 2] = v[i][2];
+	}
+
+	return l_size;
 }

@@ -1,15 +1,18 @@
 #include "renderer.hpp"
 
 void render(unsigned char *frameBuffer, int fov, 
-			float*** tris, unsigned char** color_tri, int t_size, 
-			float** spheres, float* radius, unsigned char** color_sphere, int s_size, 
-			float** lights, int l_size)
+			float* tris, unsigned char* color_tri, int t_size, 
+			float* spheres, float* radius, unsigned char* color_sphere, int s_size, 
+			float* lights, int l_size)
 {
 	int i,j,l;
 	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-// #pragma omp target map(to: i,j,l,fov,aspectRatio, tris[:NUM_TRIANGLES], spheres[:NUM_SPHERES], lights[:NUM_LIGHTS]) \
-// 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
+#pragma omp target map(to: i,j,l,fov,aspectRatio, \
+					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
+					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
+					   lights[:NUM_LIGHTS*3]) \
+				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)
 	for(i = 0; i < CANVAS_HEIGHT; i++) {
 		for(j = 0; j < CANVAS_WIDTH; j++) {
@@ -44,20 +47,20 @@ void render(unsigned char *frameBuffer, int fov,
 
 				// normal of the object intersected
 				float* n = (check == 1) ? 
-						  normal(tris[index][0], tris[index][1], tris[index][2]) :
-						  sub_vec(P, spheres[index]);
+						  normal(tris + index * 9, tris + index * 9 + 3, tris + index * 9 + 6) :
+						  sub_vec(P, spheres + index * 3);
 				normalize(n);
 				// Color of the object intersected
 				unsigned char* color = (check == 1) ?
-							   		color_tri[index] :
-							   		color_sphere[index];
+							   		color_tri + index * 3 :
+							   		color_sphere + index * 3;
 
 				// For all the lights in the world, check to see if
 				// the intersection point is lit by any of them
 				for(l = 0; l < l_size; l++) {
 
 					// Ray from point to light
-					float* rayDir = sub_vec(lights[l], P);
+					float* rayDir = sub_vec(lights + l * 3, P);
 					normalize(rayDir);
 
 					float P1[3];
@@ -85,7 +88,7 @@ void render(unsigned char *frameBuffer, int fov,
 
 #pragma omp declare target
 
-int check_intersection(float*** tris, int t_size, float** spheres, float* radius, int s_size, float *P, int *index, float *orig, float *dir)
+int check_intersection(float* tris, int t_size, float* spheres, float* radius, int s_size, float *P, int *index, float *orig, float *dir)
 {
 	int i, index_t, index_s;
 	
@@ -96,7 +99,7 @@ int check_intersection(float*** tris, int t_size, float** spheres, float* radius
 	float p_sphere[3] 	= {FLT_MAX, FLT_MAX, FLT_MAX};
 
 	for(i = 0; i < t_size; i++) {
-		if(rayTriangleIntersects(orig, dir, tris[i][0], tris[i][1], tris[i][2], P)) {
+		if(rayTriangleIntersects(orig, dir, tris + i * 9, tris + i * 9 + 3, tris + i * 9 + 6, P)) {
 			if(length(p_triangle) > length(P)) {
 				index_t = i;				
 				t_has_intersected = true;
@@ -107,7 +110,7 @@ int check_intersection(float*** tris, int t_size, float** spheres, float* radius
 	}
 
 	for(i = 0; i < s_size; i++) {
-		if(raySphereIntersects(orig, dir, spheres[i], radius[i], P)) {
+		if(raySphereIntersects(orig, dir, spheres + i * 3, radius[i], P)) {
 			if(length(p_sphere) > length(P)) {
 				index_s = i;
 				s_has_intersected = true;
