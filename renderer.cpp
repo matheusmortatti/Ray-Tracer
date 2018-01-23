@@ -1,24 +1,23 @@
 #include "renderer.hpp"
 
-void render(unsigned char *frameBuffer, int fov, 
-			float* tris, unsigned char* color_tri, int t_size, 
-			float* spheres, float* radius, unsigned char* color_sphere, int s_size, 
+void render(unsigned char *frameBuffer, int fov,
+			float* tris, unsigned char* color_tri, int t_size,
+			float* spheres, float* radius, unsigned char* color_sphere, int s_size,
 			float* lights, int l_size)
 {
-	int i,j,l;
 	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-#pragma omp target map(to: i,j,l,fov,aspectRatio, \
+#pragma omp target map(to: fov,aspectRatio, \
 					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
 					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
 					   lights[:NUM_LIGHTS*3]) \
 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
-#pragma omp parallel for collapse(1) schedule(dynamic) private(i,j,l) shared(frameBuffer)
-	for(i = 0; i < CANVAS_HEIGHT; i++) {
-		for(j = 0; j < CANVAS_WIDTH; j++) {
+#pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
+	for(int i = 0; i < CANVAS_HEIGHT; i++) {
+		for(int j = 0; j < CANVAS_WIDTH; j++) {
 
 			// Canvas to world transformation
-			float px = (2* ((j + 0.5) / (float)CANVAS_WIDTH) - 1) * 
+			float px = (2* ((j + 0.5) / (float)CANVAS_WIDTH) - 1) *
 										tan(fov / 2 * M_PI / 180) * aspectRatio;
 			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(fov / 2 * M_PI / 180);
 			float rayP[3] = {px, py, -1.0};
@@ -42,11 +41,11 @@ void render(unsigned char *frameBuffer, int fov,
 
 			// Check to see if there is an intersection between the camera ray and
 			// all the objects
-			int check = check_intersection(tris, t_size, spheres, radius, s_size, P, &index, orig, dir);			
+			int check = check_intersection(tris, t_size, spheres, radius, s_size, P, &index, orig, dir);
 			if(check != 0) {
 
 				// normal of the object intersected
-				float* n = (check == 1) ? 
+				float* n = (check == 1) ?
 						  normal(tris + index * 9, tris + index * 9 + 3, tris + index * 9 + 6) :
 						  sub_vec(P, spheres + index * 3);
 				normalize(n);
@@ -57,7 +56,7 @@ void render(unsigned char *frameBuffer, int fov,
 
 				// For all the lights in the world, check to see if
 				// the intersection point is lit by any of them
-				for(l = 0; l < l_size; l++) {
+				for(int l = 0; l < l_size; l++) {
 
 					// Ray from point to light
 					float* rayDir = sub_vec(lights + l * 3, P);
@@ -71,7 +70,7 @@ void render(unsigned char *frameBuffer, int fov,
 					// so we can calculate brightness
 					float angle = dot_product(n, rayDir);
 
-					if(angle > 0) {						
+					if(angle > 0) {
 						frameBuffer[fb_offset + 0] = clamp<int>(frameBuffer[fb_offset + 0] + check*(unsigned char)color[0]*angle, 0, 255);
 						frameBuffer[fb_offset + 1] = clamp<int>(frameBuffer[fb_offset + 1] + check*(unsigned char)color[1]*angle, 0, 255);
 						frameBuffer[fb_offset + 2] = clamp<int>(frameBuffer[fb_offset + 2] + check*(unsigned char)color[2]*angle, 0, 255);
@@ -91,7 +90,7 @@ void render(unsigned char *frameBuffer, int fov,
 int check_intersection(float* tris, int t_size, float* spheres, float* radius, int s_size, float *P, int *index, float *orig, float *dir)
 {
 	int i, index_t, index_s;
-	
+
 	int t_has_intersected = false;
 	int s_has_intersected = false;
 
@@ -101,7 +100,7 @@ int check_intersection(float* tris, int t_size, float* spheres, float* radius, i
 	for(i = 0; i < t_size; i++) {
 		if(rayTriangleIntersects(orig, dir, tris + i * 9, tris + i * 9 + 3, tris + i * 9 + 6, P)) {
 			if(length(p_triangle) > length(P)) {
-				index_t = i;				
+				index_t = i;
 				t_has_intersected = true;
 
 				copy_array(p_triangle, P, 3);
