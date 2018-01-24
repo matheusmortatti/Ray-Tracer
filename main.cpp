@@ -9,6 +9,8 @@
 #include "renderer.hpp"
 #include "maths.hpp"
 
+#define WITH_SDL false
+
 int init_triangles(float** tris, unsigned char** colors);
 int init_spheres(float** spheres, float** radius, unsigned char** colors);
 int init_lights(float** lights);
@@ -31,56 +33,76 @@ int main() {
 	s_size = init_spheres(&spheres, &radius, &color_sphere);
 	l_size = init_lights(&lights);
 
-	/**
-	 * Create SDL Window
-	 **/
-	SDL_Window 	  *window 	= NULL;
-	SDL_Renderer  *renderer = NULL;
-	SDL_Texture   *texture 	= NULL;
-
-	init_SDL(window, renderer);
-
-	texture = SDL_CreateTexture (
-				        renderer,
-				        SDL_PIXELFORMAT_ARGB8888,
-				        SDL_TEXTUREACCESS_STREAMING,
-				        CANVAS_WIDTH, CANVAS_HEIGHT );
-
 	// Create thread and start rendering
 	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
 
-	/**
-	 * Keep the screen up until the user closes it
-	 **/
-	bool quit = false;
-	while(!quit)
-	{
-		SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
-        SDL_RenderClear( renderer );
 
-		SDL_Event event;
-		while(SDL_PollEvent(&event))
+	if (WITH_SDL)
+	{
+		/**
+		 * Create SDL Window
+		 **/
+		SDL_Window 	  *window 	= NULL;
+		SDL_Renderer  *renderer = NULL;
+		SDL_Texture   *texture 	= NULL;
+
+		init_SDL(window, renderer);
+
+		texture = SDL_CreateTexture (
+					        renderer,
+					        SDL_PIXELFORMAT_ARGB8888,
+					        SDL_TEXTUREACCESS_STREAMING,
+					        CANVAS_WIDTH, CANVAS_HEIGHT );
+
+		/**
+		 * Keep the screen up until the user closes it
+		 **/
+		bool quit = false;
+		while(!quit)
 		{
-			switch(event.type)
+			SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
+	        SDL_RenderClear( renderer );
+
+			SDL_Event event;
+			while(SDL_PollEvent(&event))
 			{
-				case SDL_QUIT:
-					quit = true;
-					break;
+				switch(event.type)
+				{
+					case SDL_QUIT:
+						quit = true;
+						break;
+				}
 			}
+
+			/* Draw the image to the texture */
+			SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
+			SDL_RenderCopy( renderer, texture, NULL, NULL );
+			SDL_RenderPresent(renderer);
 		}
 
-		/* Draw the image to the texture */
-		SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
-		SDL_RenderCopy( renderer, texture, NULL, NULL );
-		SDL_RenderPresent(renderer);
+		SDL_DestroyRenderer( renderer );
+	    SDL_DestroyWindow( window );
+	    SDL_Quit();
 	}
-
-	SDL_DestroyRenderer( renderer );
-    SDL_DestroyWindow( window );
-    SDL_Quit();
 
     // Join thread to wait for it to end before exiting
     render_thread.join();
+
+    if(!WITH_SDL)
+    {
+	    printf("P3\n%d  %d  %d\n", CANVAS_WIDTH, CANVAS_HEIGHT, 255);
+
+	    for(int i = 0; i < CANVAS_HEIGHT; i++) {
+			for(int j = 0; j < CANVAS_WIDTH; j++) {
+				int fb_offset = CANVAS_WIDTH * i * 4 + j * 4;
+				int z = (int)abs(frameBuffer[fb_offset + 0]),
+					y = (int)abs(frameBuffer[fb_offset + 1]),
+					x = (int)abs(frameBuffer[fb_offset + 2]);
+				printf("%d %d %d ", x, y, z);
+			}
+			printf("\n");
+		}
+	}
 
     delete[] tris;
     delete[] color_tri;
