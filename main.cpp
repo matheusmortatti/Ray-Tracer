@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <cfloat>
 #include <thread>
+#include <fstream>
 #include "omp.h"
 #include "SDL.h"
 #include "renderer.hpp"
@@ -90,7 +91,10 @@ int main() {
 
     if(!WITH_SDL)
     {
-	    printf("P3\n%d  %d  %d\n", CANVAS_WIDTH, CANVAS_HEIGHT, 255);
+    	std::ofstream image;
+    	image.open("image.ppm");
+	    
+	    image << "P3\n" << CANVAS_WIDTH << " " << CANVAS_HEIGHT << " " << 255 << std::endl;
 
 	    for(int i = 0; i < CANVAS_HEIGHT; i++) {
 			for(int j = 0; j < CANVAS_WIDTH; j++) {
@@ -98,9 +102,10 @@ int main() {
 				int z = (int)abs(frameBuffer[fb_offset + 0]),
 					y = (int)abs(frameBuffer[fb_offset + 1]),
 					x = (int)abs(frameBuffer[fb_offset + 2]);
-				printf("%d %d %d ", x, y, z);
+				
+				image << x << " " << y << " " << z << " ";
 			}
-			printf("\n");
+			image << std::endl;
 		}
 	}
 
