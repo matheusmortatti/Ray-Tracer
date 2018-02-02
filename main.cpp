@@ -5,8 +5,8 @@
 #include <cfloat>
 #include <thread>
 #include <fstream>
+//#include "SDL.h"
 #include "omp.h"
-#include "SDL.h"
 #include "renderer.hpp"
 #include "maths.hpp"
 
@@ -16,8 +16,8 @@ int init_triangles(float** tris, unsigned char** colors);
 int init_spheres(float** spheres, float** radius, unsigned char** colors);
 int init_lights(float** lights);
 
-void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
-void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
+// void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
+// void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
 
 int main() {
 	int fov = 120;
@@ -38,53 +38,53 @@ int main() {
 	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
 
 
-	if (WITH_SDL)
-	{
-		/**
-		 * Create SDL Window
-		 **/
-		SDL_Window 	  *window 	= NULL;
-		SDL_Renderer  *renderer = NULL;
-		SDL_Texture   *texture 	= NULL;
+	// if (WITH_SDL)
+	// {
+	// 	/**
+	// 	 * Create SDL Window
+	// 	 **/
+	// 	SDL_Window 	  *window 	= NULL;
+	// 	SDL_Renderer  *renderer = NULL;
+	// 	SDL_Texture   *texture 	= NULL;
 
-		init_SDL(window, renderer);
+	// 	init_SDL(window, renderer);
 
-		texture = SDL_CreateTexture (
-					        renderer,
-					        SDL_PIXELFORMAT_ARGB8888,
-					        SDL_TEXTUREACCESS_STREAMING,
-					        CANVAS_WIDTH, CANVAS_HEIGHT );
+	// 	texture = SDL_CreateTexture (
+	// 				        renderer,
+	// 				        SDL_PIXELFORMAT_ARGB8888,
+	// 				        SDL_TEXTUREACCESS_STREAMING,
+	// 				        CANVAS_WIDTH, CANVAS_HEIGHT );
 
-		/**
-		 * Keep the screen up until the user closes it
-		 **/
-		bool quit = false;
-		while(!quit)
-		{
-			SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
-	        SDL_RenderClear( renderer );
+	// 	/**
+	// 	 * Keep the screen up until the user closes it
+	// 	 **/
+	// 	bool quit = false;
+	// 	while(!quit)
+	// 	{
+	// 		SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
+	//         SDL_RenderClear( renderer );
 
-			SDL_Event event;
-			while(SDL_PollEvent(&event))
-			{
-				switch(event.type)
-				{
-					case SDL_QUIT:
-						quit = true;
-						break;
-				}
-			}
+	// 		SDL_Event event;
+	// 		while(SDL_PollEvent(&event))
+	// 		{
+	// 			switch(event.type)
+	// 			{
+	// 				case SDL_QUIT:
+	// 					quit = true;
+	// 					break;
+	// 			}
+	// 		}
 
-			/* Draw the image to the texture */
-			SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
-			SDL_RenderCopy( renderer, texture, NULL, NULL );
-			SDL_RenderPresent(renderer);
-		}
+	// 		/* Draw the image to the texture */
+	// 		SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
+	// 		SDL_RenderCopy( renderer, texture, NULL, NULL );
+	// 		SDL_RenderPresent(renderer);
+	// 	}
 
-		SDL_DestroyRenderer( renderer );
-	    SDL_DestroyWindow( window );
-	    SDL_Quit();
-	}
+	// 	SDL_DestroyRenderer( renderer );
+	//     SDL_DestroyWindow( window );
+	//     SDL_Quit();
+	// }
 
     // Join thread to wait for it to end before exiting
     render_thread.join();
@@ -123,43 +123,43 @@ int main() {
 	return 0;
 }
 
-void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
-{
-	Uint8 *pixels = (Uint8*)screenSurface->pixels;
-	Uint8 *pixel  = pixels + y * screenSurface->pitch + x;
-	*pixel = SDL_MapRGB(screenSurface->format, 255, 255, 255);
-}
+// void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
+// {
+// 	Uint8 *pixels = (Uint8*)screenSurface->pixels;
+// 	Uint8 *pixel  = pixels + y * screenSurface->pitch + x;
+// 	*pixel = SDL_MapRGB(screenSurface->format, 255, 255, 255);
+// }
 
-void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
-{
+// void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
+// {
 
-	if(SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		std::cout << "SDL Could not initialize! SDL Error: " << SDL_GetError() << std::endl;
-	}
-	else
-	{
-		window = SDL_CreateWindow(
-							"RayTracer", 
-							SDL_WINDOWPOS_UNDEFINED, 
-							SDL_WINDOWPOS_UNDEFINED,
-							CANVAS_WIDTH, 
-							CANVAS_HEIGHT,
-							SDL_WINDOW_SHOWN);
-		if(window == NULL)
-		{
-			std::cout << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
-		}
-		else
-		{
-			renderer = SDL_CreateRenderer (
-						        window,
-						        -1,
-						        SDL_RENDERER_ACCELERATED
-						        );
-		}
-	}
-}
+// 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
+// 	{
+// 		std::cout << "SDL Could not initialize! SDL Error: " << SDL_GetError() << std::endl;
+// 	}
+// 	else
+// 	{
+// 		window = SDL_CreateWindow(
+// 							"RayTracer", 
+// 							SDL_WINDOWPOS_UNDEFINED, 
+// 							SDL_WINDOWPOS_UNDEFINED,
+// 							CANVAS_WIDTH, 
+// 							CANVAS_HEIGHT,
+// 							SDL_WINDOW_SHOWN);
+// 		if(window == NULL)
+// 		{
+// 			std::cout << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
+// 		}
+// 		else
+// 		{
+// 			renderer = SDL_CreateRenderer (
+// 						        window,
+// 						        -1,
+// 						        SDL_RENDERER_ACCELERATED
+// 						        );
+// 		}
+// 	}
+// }
 
 int init_triangles(float** tris, unsigned char** colors)
 {
