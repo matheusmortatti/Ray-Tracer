@@ -3,7 +3,7 @@
 
 CC = clang++
 CCFLAGS = -fopenmp -std=c++0x -pthread
-LDFLAGS = -lm `sdl2-config --cflags --libs`
+LDFLAGS = -lm 
 
 TARGET = raytracer
 INC_DIR := -I.
