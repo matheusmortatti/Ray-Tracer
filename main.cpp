@@ -5,6 +5,7 @@
 #include <cfloat>
 #include <thread>
 #include <fstream>
+#include <sstream>
 //#include "SDL.h"
 #include "omp.h"
 #include "renderer.hpp"
@@ -12,6 +13,10 @@
 
 #define WITH_SDL false
 
+void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors, 
+									 float** spheres, float** radius, unsigned char** s_colors,
+									 float** lights,
+									 int& t_size, int& s_size, int& l_size);
 int init_triangles(float** tris, unsigned char** colors);
 int init_spheres(float** spheres, float** radius, unsigned char** colors);
 int init_lights(float** lights);
@@ -30,9 +35,14 @@ int main() {
 
 	int t_size, s_size, l_size;
 
-	t_size = init_triangles(&tris, &color_tri);
-	s_size = init_spheres(&spheres, &radius, &color_sphere);
-	l_size = init_lights(&lights);
+	ReadSceneFile( "scene.txt", &tris, &color_tri,
+								&spheres, &radius, &color_sphere,
+								&lights,
+								t_size, s_size, l_size );
+
+	//t_size = init_triangles(&tris, &color_tri);
+	//s_size = init_spheres(&spheres, &radius, &color_sphere);
+	//l_size = init_lights(&lights);
 
 	// Create thread and start rendering
 	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
@@ -91,8 +101,8 @@ int main() {
 
     if(!WITH_SDL)
     {
-    	std::ofstream image;
-    	image.open("image.ppm");
+    	std::ofstream image;		
+    	image.open("image.ppm");		
 	    
 	    image << "P3\n" << CANVAS_WIDTH << " " << CANVAS_HEIGHT << " " << 255 << std::endl;
 
@@ -160,6 +170,140 @@ int main() {
 // 		}
 // 	}
 // }
+
+void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors, 
+									 float** spheres, float** radius, unsigned char** s_colors,
+									 float** lights,
+									 int& t_size, int& s_size, int& l_size)
+{
+	std::ifstream file;
+	file.open( path );
+
+	if( !file.is_open() )
+	{
+		std::cerr << "Could not open file '" << path << "'" << std::endl;
+	}
+
+	std::vector<float> vtriangles;
+	std::vector<float> vspheres;
+	std::vector<float> vlights;
+	while( !file.eof() )
+	{
+		std::string line;
+		std::getline( file, line );
+
+		if( line.front() == '/' )
+			continue;
+		
+		std::istringstream stream(line);
+		char type;
+		stream >> type;
+
+		float val;
+		unsigned char col;
+
+		switch( type )
+		{
+			case 's':
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				stream >> val;
+				vspheres.push_back( val );
+				break;
+			
+			case 't':
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				stream >> val;
+				vtriangles.push_back( val );
+				break;
+
+			case 'l':
+				stream >> val;
+				vlights.push_back( val );
+				stream >> val;
+				vlights.push_back( val );
+				stream >> val;
+				vlights.push_back( val );
+				break;
+		}		
+	}
+
+	t_size = vtriangles.size() / 12;
+	s_size = vspheres.size() / 7;
+	l_size = vlights.size() / 3;	
+
+	(*tris) 	= new float[t_size * 9];
+	(*t_colors)	= new unsigned char[t_size * 3];
+	(*spheres)  = new float[s_size * 3];
+	(*radius)   = new float[s_size * 1];
+	(*s_colors) = new unsigned char[s_size * 3];
+	(*lights)   = new float[l_size * 3];
+
+	for( int i = 0; i < t_size; i++ )
+	{
+		(*tris)[i * 9 + 0] = vtriangles[i * 12 + 0];
+		(*tris)[i * 9 + 1] = vtriangles[i * 12 + 1];
+		(*tris)[i * 9 + 2] = vtriangles[i * 12 + 2];
+		(*tris)[i * 9 + 3] = vtriangles[i * 12 + 3];
+		(*tris)[i * 9 + 4] = vtriangles[i * 12 + 4];
+		(*tris)[i * 9 + 5] = vtriangles[i * 12 + 5];
+		(*tris)[i * 9 + 6] = vtriangles[i * 12 + 6];
+		(*tris)[i * 9 + 7] = vtriangles[i * 12 + 7];
+		(*tris)[i * 9 + 8] = vtriangles[i * 12 + 8];
+		(*t_colors)[i * 3 + 0] = (unsigned char)vtriangles[i * 12 + 9];
+		(*t_colors)[i * 3 + 1] = (unsigned char)vtriangles[i * 12 + 10];
+		(*t_colors)[i * 3 + 2] = (unsigned char)vtriangles[i * 12 + 11];
+	}
+
+	for( int i = 0; i < s_size; i++ )
+	{
+		(*radius)[i * 1 + 0] = vspheres[i * 7 + 0];
+		(*spheres)[i * 3 + 0] = vspheres[i * 7 + 1];
+		(*spheres)[i * 3 + 1] = vspheres[i * 7 + 2];
+		(*spheres)[i * 3 + 2] = vspheres[i * 7 + 3];
+		(*s_colors)[i * 3 + 0] = (unsigned char)vspheres[i * 7 + 4];
+		(*s_colors)[i * 3 + 1] = (unsigned char)vspheres[i * 7 + 5];
+		(*s_colors)[i * 3 + 2] = (unsigned char)vspheres[i * 7 + 6];			
+	}
+
+	for( int i = 0; i < l_size; i++ )
+	{		
+		(*lights)[i * 3 + 0] = vlights[i * 3 + 0];
+		(*lights)[i * 3 + 1] = vlights[i * 3 + 1];
+		(*lights)[i * 3 + 2] = vlights[i * 3 + 2];						
+	}
+}
 
 int init_triangles(float** tris, unsigned char** colors)
 {
@@ -233,15 +377,15 @@ int init_spheres(float** spheres, float** radius, unsigned char** colors)
 
 	for(int i = 0; i < s_size; i++)
 	{
-		(*spheres)[i + 0] = v[i][0];
-		(*spheres)[i + 1] = v[i][1];
-		(*spheres)[i + 2] = v[i][2];
+		(*spheres)[i * 3 + 0] = v[i][0];
+		(*spheres)[i * 3 + 1] = v[i][1];
+		(*spheres)[i * 3 + 2] = v[i][2];
 
 		(*radius)[i] = r[i];
 
-		(*colors)[i + 0] = c[i][0];
-		(*colors)[i + 1] = c[i][1];
-		(*colors)[i + 2] = c[i][2];
+		(*colors)[i * 3 + 0] = c[i][0];
+		(*colors)[i * 3 + 1] = c[i][1];
+		(*colors)[i * 3 + 2] = c[i][2];
 	}
 
 	return s_size;
