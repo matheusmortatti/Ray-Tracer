@@ -94,8 +94,8 @@ void swap(float *a, float *b)
 
 int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* p3, float* P)
 {
-
-	float kEpsilon = 0.00001;
+	float kEpsilon = 0.0001;
+	
 	float* N = normal(p1,p2,p3);
 	float NdotRayDirection = dot_product(N, dir);
 
@@ -103,7 +103,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 	if(fabs(NdotRayDirection) < kEpsilon)
 	{
 		delete[] N;
-		return 0;
+		return false;
 	}
 
 	float d = dot_product(N, p1);
@@ -111,7 +111,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 	if (t < 0) 
 	{
 		delete[] N;
-		return 0;
+		return false;
 	}
 
 	float* scl = scale_vec(dir, t);
@@ -131,7 +131,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 		delete[] N;
 		delete[] edge0;
 		delete[] vp0;
-		return 0;
+		return false;
 	}
 	delete[] C;
 
@@ -147,7 +147,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 		delete[] vp0;
 		delete[] edge1;
 		delete[] vp1;
-		return 0;
+		return false;
 	}
 	delete[] C;
 
@@ -165,7 +165,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 		delete[] vp1;
 		delete[] edge2;
 		delete[] vp2;
-		return 0;
+		return false;
 	}
 
 	delete[] C;
@@ -177,7 +177,7 @@ int rayTriangleIntersects(float* orig, float* dir, float* p1, float* p2, float* 
 	delete[] edge2;
 	delete[] vp2;
 
-	return 1;
+	return true;
 }
 
 int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, float* P)
@@ -194,7 +194,7 @@ int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, fl
 	if(discr < 0) 
 	{
 		delete[] L;
-		return 0;
+		return false;
 	}
 	else if(discr == 0) t0 = t1 = - 0.5 * b / a;
 	else {
@@ -212,7 +212,7 @@ int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, fl
 		if(t0 <= kEpsilon) 
 		{
 			delete[] L;
-			return 0;
+			return false;
 		}
 	}
 
@@ -223,7 +223,7 @@ int raySphereIntersects(float* orig, float* dir, float* s_orig, float radius, fl
 	delete[] scl;
 	delete[] add;
 	delete[] L;
-	return 1;
+	return true;
 }
 
 void copy_array(float* to, float* from, int size)

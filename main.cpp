@@ -25,7 +25,7 @@ int init_lights(float** lights);
 // void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
 
 int main() {
-	int fov = 120;
+	int fov = 90;
 	unsigned char *frameBuffer;
 
 	frameBuffer = new unsigned char[4 * CANVAS_HEIGHT * CANVAS_WIDTH];
@@ -40,9 +40,7 @@ int main() {
 								&lights,
 								t_size, s_size, l_size );
 
-	//t_size = init_triangles(&tris, &color_tri);
-	//s_size = init_spheres(&spheres, &radius, &color_sphere);
-	//l_size = init_lights(&lights);
+	s_size = init_spheres(&spheres, &radius, &color_sphere);
 
 	// Create thread and start rendering
 	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
@@ -205,63 +203,32 @@ void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 		switch( type )
 		{
 			case 's':
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
-				stream >> val;
-				vspheres.push_back( val );
+				for(int i = 0; i < 7; i++) {
+					stream >> val;
+					vspheres.push_back( val );	
+				}				
 				break;
 			
 			case 't':
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
-				stream >> val;
-				vtriangles.push_back( val );
+				for(int i = 0; i < 12; i++) {
+					stream >> val;
+					vtriangles.push_back( val );
+				}						
 				break;
 
 			case 'l':
-				stream >> val;
-				vlights.push_back( val );
-				stream >> val;
-				vlights.push_back( val );
-				stream >> val;
-				vlights.push_back( val );
+				for(int i = 0; i < 3; i++)
+				{
+					stream >> val;
+					vlights.push_back( val );	
+				}			
 				break;
 		}		
 	}
 
 	t_size = vtriangles.size() / 12;
 	s_size = vspheres.size() / 7;
-	l_size = vlights.size() / 3;	
+	l_size = vlights.size() / 3;
 
 	(*tris) 	= new float[t_size * 9];
 	(*t_colors)	= new unsigned char[t_size * 3];
@@ -301,7 +268,7 @@ void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 	{		
 		(*lights)[i * 3 + 0] = vlights[i * 3 + 0];
 		(*lights)[i * 3 + 1] = vlights[i * 3 + 1];
-		(*lights)[i * 3 + 2] = vlights[i * 3 + 2];						
+		(*lights)[i * 3 + 2] = vlights[i * 3 + 2];
 	}
 }
 
@@ -355,40 +322,44 @@ int init_triangles(float** tris, unsigned char** colors)
 
 int init_spheres(float** spheres, float** radius, unsigned char** colors)
 {
-	int s_size = 1;
+	float rad = 1.0f;
+	int row = 10, col = 10;
 
-	(*spheres) = new float[s_size * 3];
-	(*radius)  = new float[s_size];
-	(*colors) = new unsigned char[s_size * 3];
+#ifdef BENCHMIN
+	row = 30;
+	col = 30;
+#endif
 
-	float v[1][3] = {
-					    {
-					    	0.0, 0.0, -4.0
-					    }
-				    };
+#ifdef BENCHMID
+	row = 70;
+	col = 70;
+#endif
 
-	float r[1] = { 1.0 };
+#ifdef BENCHMAX
+	row = 100;
+	col = 100;
+#endif
 
-	unsigned char c[1][3] = {
-							    {
-							    	0, 255, 0
-							    }
-						    };
+	(*spheres) = new float[row*col*3];
+	(*colors) = new unsigned char[row*col*3];
+	(*radius) = new float[row*col];
 
-	for(int i = 0; i < s_size; i++)
+	for(int i = 0; i < row; i++)
 	{
-		(*spheres)[i * 3 + 0] = v[i][0];
-		(*spheres)[i * 3 + 1] = v[i][1];
-		(*spheres)[i * 3 + 2] = v[i][2];
+		for(int j = 0; j < col; j++)
+		{
+			(*spheres)[(i * col + j) * 3 + 0] = (j * 2 - col) * rad;
+			(*spheres)[(i * col + j) * 3 + 1] = (i * 2 - row) * rad;
+			(*spheres)[(i * col + j) * 3 + 2] = -50;
+			(*radius)[(i * col + j)] = rad;
 
-		(*radius)[i] = r[i];
-
-		(*colors)[i * 3 + 0] = c[i][0];
-		(*colors)[i * 3 + 1] = c[i][1];
-		(*colors)[i * 3 + 2] = c[i][2];
+			(*colors)[(i * col + j) * 3 + 0] = 0;
+			(*colors)[(i * col + j) * 3 + 1] = 255;
+			(*colors)[(i * col + j) * 3 + 2] = 0;
+		}		
 	}
 
-	return s_size;
+	return row*col;
 }
 
 int init_lights(float** lights)

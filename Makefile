@@ -1,9 +1,18 @@
 # CCFLAGS options for omp targets
-# -omptargets=x86_64-unknown-linux-spark -fopenmp-targets=x86_64-unknown-linux-gnu
+# -omptargets=x86_64-unknown-linux-spark -fopenmp-targets=x86_64-unknown-linux-gnu `sdl2-config --cflags --libs`
 
-CC = clang++
-CCFLAGS = -fopenmp -std=c++0x -pthread
-LDFLAGS = -lm 
+###################################################
+# Compile Flag Options:
+#
+# -> UNLIT: whether or not the scene is unlit
+# -> BENCHMIN: benchmark easy mode (~1 min)
+# -> BENCHMID: benchmark medium mode (~6 min)
+# -> BENCHMAX: benchmark hard mode (~15 min)
+###################################################
+
+CC = g++
+CCFLAGS = -fopenmp -std=c++0x -pthread -O3 -DBENCHMAX
+LDFLAGS = -lm
 
 TARGET = raytracer
 INC_DIR := -I.

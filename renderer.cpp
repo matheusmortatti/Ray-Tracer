@@ -1,5 +1,10 @@
 #include "renderer.hpp"
 
+inline double deg2rad (double degrees) {
+    static const double pi_on_180 = 4.0 * atan (1.0) / 180.0;
+    return degrees * pi_on_180;
+}
+
 void render(unsigned char *frameBuffer, int fov,
 			float* tris, unsigned char* color_tri, int t_size,
 			float* spheres, float* radius, unsigned char* color_sphere, int s_size,
@@ -7,19 +12,19 @@ void render(unsigned char *frameBuffer, int fov,
 {
 	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-#pragma omp target map(to: fov,aspectRatio, \
-					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
-					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
-					   lights[:NUM_LIGHTS*3]) \
-				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
+// #pragma omp target map(to: fov,aspectRatio, \
+// 					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
+// 					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
+// 					   lights[:NUM_LIGHTS*3]) \
+// 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
 	for(int i = 0; i < CANVAS_HEIGHT; i++) {
 		for(int j = 0; j < CANVAS_WIDTH; j++) {
 
 			// Canvas to world transformation
 			float px = (2* ((j + 0.5) / (float)CANVAS_WIDTH) - 1) *
-										tan(fov / 2 * M_PI / 180) * aspectRatio;
-			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(fov / 2 * M_PI / 180);
+										tan(deg2rad(fov * 0.5)) * aspectRatio;
+			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(deg2rad(fov * 0.5));
 			float rayP[3] = {px, py, -1.0};
 			float orig[3] = {0.0, 0.0, 0.0};
 
@@ -34,7 +39,7 @@ void render(unsigned char *frameBuffer, int fov,
 			frameBuffer[fb_offset + 0] = 0;
 			frameBuffer[fb_offset + 1] = 0;
 			frameBuffer[fb_offset + 2] = 0;
-			frameBuffer[fb_offset + 3] = 1.0;
+			frameBuffer[fb_offset + 3] = -1;
 
 			float P[3];
 			int index;
@@ -54,6 +59,8 @@ void render(unsigned char *frameBuffer, int fov,
 							   		color_tri + index * 3 :
 							   		color_sphere + index * 3;
 
+			#if !UNLIT
+
 				// For all the lights in the world, check to see if
 				// the intersection point is lit by any of them
 				for(int l = 0; l < l_size; l++) {
@@ -62,21 +69,30 @@ void render(unsigned char *frameBuffer, int fov,
 					float* rayDir = sub_vec(lights + l * 3, P);
 					normalize(rayDir);
 
-					float P1[3];
 
-					// Check to see if there isn't any objects in the way of the ray
-					check = check_intersection(tris, t_size, spheres, radius, s_size, P1, &index, P, rayDir) == 0 ? 1 : 0;
+					// std::cout << (n)[0] << " " << (n)[1] << " " << (n)[2] << std::endl;
+
 					// Calculate angle between the normal and the ray
 					// so we can calculate brightness
-					float angle = dot_product(n, rayDir);
+					float angle = std::max(0.0f, dot_product(n, rayDir));
 
-					if(angle > 0) {
-						frameBuffer[fb_offset + 0] = clamp<int>(frameBuffer[fb_offset + 0] + check*(unsigned char)color[0]*angle, 0, 255);
-						frameBuffer[fb_offset + 1] = clamp<int>(frameBuffer[fb_offset + 1] + check*(unsigned char)color[1]*angle, 0, 255);
-						frameBuffer[fb_offset + 2] = clamp<int>(frameBuffer[fb_offset + 2] + check*(unsigned char)color[2]*angle, 0, 255);
+					float P1[3];
+					
+					// If there are no objects in the way of the ray, the point is lit by the light
+					if(check_intersection(tris, t_size, spheres, radius, s_size, P1, &index, P, rayDir) == 0)
+					{
+						frameBuffer[fb_offset + 0] = clamp<uint16_t>(frameBuffer[fb_offset + 0] + color[0]*angle, 0, 255);
+						frameBuffer[fb_offset + 1] = clamp<uint16_t>(frameBuffer[fb_offset + 1] + color[1]*angle, 0, 255);
+						frameBuffer[fb_offset + 2] = clamp<uint16_t>(frameBuffer[fb_offset + 2] + color[2]*angle, 0, 255);
 					}
 					delete[] rayDir;
 				}
+
+			#else
+				frameBuffer[fb_offset + 0] = clamp<int>(frameBuffer[fb_offset + 0] + color[0], 0, 255);
+				frameBuffer[fb_offset + 1] = clamp<int>(frameBuffer[fb_offset + 1] + color[1], 0, 255);
+				frameBuffer[fb_offset + 2] = clamp<int>(frameBuffer[fb_offset + 2] + color[2], 0, 255);
+			#endif
 
 				delete[] n;
 			}
@@ -89,7 +105,7 @@ void render(unsigned char *frameBuffer, int fov,
 
 int check_intersection(float* tris, int t_size, float* spheres, float* radius, int s_size, float *P, int *index, float *orig, float *dir)
 {
-	int i, index_t, index_s;
+	int i, index_tri, index_s;
 
 	int t_has_intersected = false;
 	int s_has_intersected = false;
@@ -100,13 +116,13 @@ int check_intersection(float* tris, int t_size, float* spheres, float* radius, i
 	for(i = 0; i < t_size; i++) {
 		if(rayTriangleIntersects(orig, dir, tris + i * 9, tris + i * 9 + 3, tris + i * 9 + 6, P)) {
 			if(length(p_triangle) > length(P)) {
-				index_t = i;
+				index_tri = i;
 				t_has_intersected = true;
 
 				copy_array(p_triangle, P, 3);
 			}
 		}
-	}
+	}	
 
 	for(i = 0; i < s_size; i++) {
 		if(raySphereIntersects(orig, dir, spheres + i * 3, radius[i], P)) {
@@ -123,7 +139,7 @@ int check_intersection(float* tris, int t_size, float* spheres, float* radius, i
 		return 0;
 	if(length(p_triangle) <= length(p_sphere)){
 		copy_array(P, p_triangle, 3);
-		*index = index_t;
+		*index = index_tri;
 		return 1;
 	}
 	if(length(p_triangle) > length(p_sphere)) {

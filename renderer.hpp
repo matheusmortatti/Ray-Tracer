@@ -6,8 +6,8 @@
 #include <cfloat>
 #include "omp.h"
 
-#define CANVAS_HEIGHT 1080
-#define CANVAS_WIDTH 1920
+#define CANVAS_HEIGHT 1440
+#define CANVAS_WIDTH 2560
 #define NUM_TRIANGLES 2
 #define NUM_LIGHTS 2
 #define NUM_SPHERES 1
