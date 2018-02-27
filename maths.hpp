@@ -26,7 +26,7 @@ struct sphere {
 template<class T>
 T clamp(T value, T min, T max)
 {
-	return std::max(min, std::min(max, value));
+	return value < min ? min : ( value > max ? max : value );
 }
 
 float* scale_vec(float* v, float t);

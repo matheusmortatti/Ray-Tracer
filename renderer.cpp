@@ -1,10 +1,5 @@
 #include "renderer.hpp"
 
-inline double deg2rad (double degrees) {
-    static const double pi_on_180 = 4.0 * atan (1.0) / 180.0;
-    return degrees * pi_on_180;
-}
-
 void render(unsigned char *frameBuffer, int fov,
 			float* tris, unsigned char* color_tri, int t_size,
 			float* spheres, float* radius, unsigned char* color_sphere, int s_size,
@@ -12,19 +7,19 @@ void render(unsigned char *frameBuffer, int fov,
 {
 	float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-// #pragma omp target map(to: fov,aspectRatio, \
-// 					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
-// 					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
-// 					   lights[:NUM_LIGHTS*3]) \
-// 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
+ #pragma omp target map(to: fov,aspectRatio, \
+ 					   tris[:NUM_TRIANGLES*9], color_tri[:NUM_TRIANGLES*3], \
+ 					   spheres[:NUM_SPHERES*3], radius[:NUM_SPHERES], color_sphere[:NUM_SPHERES*3], \
+ 					   lights[:NUM_LIGHTS*3]) \
+ 				   map(from: frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
 	for(int i = 0; i < CANVAS_HEIGHT; i++) {
 		for(int j = 0; j < CANVAS_WIDTH; j++) {
 
 			// Canvas to world transformation
 			float px = (2* ((j + 0.5) / (float)CANVAS_WIDTH) - 1) *
-										tan(deg2rad(fov * 0.5)) * aspectRatio;
-			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(deg2rad(fov * 0.5));
+										tan(fov * 0.5 * M_PI/180) * aspectRatio;
+			float py = (1 - 2* ((i + 0.5) / (float)CANVAS_HEIGHT)) * tan(fov * 0.5 * M_PI/180);
 			float rayP[3] = {px, py, -1.0};
 			float orig[3] = {0.0, 0.0, 0.0};
 
@@ -74,7 +69,8 @@ void render(unsigned char *frameBuffer, int fov,
 
 					// Calculate angle between the normal and the ray
 					// so we can calculate brightness
-					float angle = std::max(0.0f, dot_product(n, rayDir));
+					float angle = dot_product(n, rayDir);
+					angle = angle < 0 ? 0 : angle;
 
 					float P1[3];
 					

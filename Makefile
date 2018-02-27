@@ -10,8 +10,8 @@
 # -> BENCHMAX: benchmark hard mode (~15 min)
 ###################################################
 
-CC = g++
-CCFLAGS = -fopenmp -std=c++0x -pthread -O3 -DBENCHMAX
+CC = clang++
+CCFLAGS = -fopenmp -std=c++0x -pthread -omptargets=x86_64-unknown-linux-spark -DBENCHMIN
 LDFLAGS = -lm
 
 TARGET = raytracer

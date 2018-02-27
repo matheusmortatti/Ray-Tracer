@@ -9,8 +9,8 @@
 #define CANVAS_HEIGHT 1440
 #define CANVAS_WIDTH 2560
 #define NUM_TRIANGLES 2
-#define NUM_LIGHTS 2
-#define NUM_SPHERES 1
+#define NUM_LIGHTS 1
+#define NUM_SPHERES 900
 
 void render(unsigned char *frameBuffer, int fov, 
 			float* tris, unsigned char* color_tri, int t_size, 
