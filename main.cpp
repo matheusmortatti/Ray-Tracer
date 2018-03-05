@@ -6,6 +6,11 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
 #ifdef USE_SDL
 #include "SDL.h"
 #endif // USE_SDL
@@ -13,7 +18,30 @@
 #include "renderer.hpp"
 #include "maths.hpp"
 
-#define WITH_SDL false
+class InputParser{
+    public:
+        InputParser (int &argc, char **argv){
+            for (int i=1; i < argc; ++i)
+                this->tokens.push_back(std::string(argv[i]));
+        }
+        /// @author iain
+        const std::string& getCmdOption(const std::string &option) const{
+            std::vector<std::string>::const_iterator itr;
+            itr =  std::find(this->tokens.begin(), this->tokens.end(), option);
+            if (itr != this->tokens.end() && ++itr != this->tokens.end()){
+                return *itr;
+            }
+            static const std::string empty_string("");
+            return empty_string;
+        }
+        /// @author iain
+        bool cmdOptionExists(const std::string &option) const{
+            return std::find(this->tokens.begin(), this->tokens.end(), option)
+                   != this->tokens.end();
+        }
+    private:
+        std::vector <std::string> tokens;
+};
 
 void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 									 float** spheres, float** radius, unsigned char** s_colors,
@@ -28,7 +56,21 @@ void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
 void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
 #endif // USE_SDL
 
-int main() {
+int main(int argc, char **argv) {
+
+	InputParser input(argc, argv);
+	if(input.cmdOptionExists("-h")){
+		cout << "Ray-Tracer\n"
+				 << "-f <filename> : Input file to configurate the scene (default: scene.txt)\n"
+				 << "-n            : No display\n"
+				 << "-h            : Print this message\n";
+		exit(0);
+	}
+
+	const bool no_display = input.cmdOptionExists("-n");
+
+	const std::string &filename = input.cmdOptionExists("-f") ? input.getCmdOption("-f") : "scene.txt";
+
 	int fov = 90;
 	unsigned char *frameBuffer;
 
@@ -39,7 +81,8 @@ int main() {
 
 	int t_size, s_size, l_size;
 
-	ReadSceneFile( "scene.txt", &tris, &color_tri,
+
+	ReadSceneFile( filename, &tris, &color_tri,
 								&spheres, &radius, &color_sphere,
 								&lights,
 								t_size, s_size, l_size );
@@ -50,7 +93,7 @@ int main() {
 	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);
 
 	#ifdef USE_SDL
-	if (WITH_SDL)
+	if (!no_display)
 	{
 		/**
 		 * Create SDL Window
@@ -102,7 +145,7 @@ int main() {
     // Join thread to wait for it to end before exiting
     render_thread.join();
 
-    if(!WITH_SDL)
+    if(no_display)
     {
     	std::ofstream image;
     	image.open("image.ppm");
