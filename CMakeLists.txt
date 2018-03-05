@@ -25,6 +25,19 @@ if(USE_SDL)
   add_definitions(-DUSE_SDL)
 endif()
 
+###################################################
+# Compile Flag Options:
+#
+# -> UNLIT: whether or not the scene is unlit
+# -> BENCHMIN: benchmark easy mode (~1 min)
+# -> BENCHMID: benchmark medium mode (~6 min)
+# -> BENCHMAX: benchmark hard mode (~15 min)
+###################################################
+#add_definitions(-DUNLIT)
+add_definitions(-DBENCHMIN)
+#add_definitions(-DBENCHMID)
+#add_definitions(-DBENCHMAX)
+
 # Set OMP target flags
 set(OMP_TARGETS "x86_64-unknown-linux-spark")
 set(OMP_OFFLOAD_FLAGS "-omptargets=${OMP_TARGETS}")
