@@ -49,7 +49,8 @@ void ReadSceneFile(std::string path, float **tris, unsigned char **t_colors,
                    float **spheres, float **radius, unsigned char **s_colors,
                    float **lights, int &t_size, int &s_size, int &l_size);
 int init_triangles(float **tris, unsigned char **colors);
-int init_spheres(float **spheres, float **radius, unsigned char **colors);
+int init_spheres(float **spheres, float **radius, unsigned char **colors,
+                 int row, int col);
 int init_lights(float **lights);
 
 #ifdef USE_SDL
@@ -64,6 +65,8 @@ int main(int argc, char **argv) {
     cout << "Ray-Tracer\n"
          << "-f <filename> : Input file to configurate the scene (default: "
             "scene.txt)\n"
+         << "-row          : Row number of the sphere matrix (default: 10)\n"
+         << "-col          : Column number of the sphere matrix (default: 10)\n"
          << "-n            : No display\n"
          << "-h            : Print this message\n";
     exit(0);
@@ -73,6 +76,14 @@ int main(int argc, char **argv) {
 
   const std::string &filename =
       input.cmdOptionExists("-f") ? input.getCmdOption("-f") : "scene.txt";
+
+  int col = 10;
+  int row = 10;
+
+  if (input.cmdOptionExists("-col"))
+    col = stoi(input.getCmdOption("-col"));
+  if (input.cmdOptionExists("-row"))
+    row = stoi(input.getCmdOption("-row"));
 
   int fov = 90;
   unsigned char *frameBuffer;
@@ -87,7 +98,7 @@ int main(int argc, char **argv) {
   ReadSceneFile(filename, &tris, &color_tri, &spheres, &radius, &color_sphere,
                 &lights, t_size, s_size, l_size);
 
-  s_size = init_spheres(&spheres, &radius, &color_sphere);
+  s_size = init_spheres(&spheres, &radius, &color_sphere, row, col);
 
   // Create thread and start rendering
   std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size,
@@ -344,9 +355,9 @@ int init_triangles(float **tris, unsigned char **colors) {
   return t_size;
 }
 
-int init_spheres(float **spheres, float **radius, unsigned char **colors) {
+int init_spheres(float **spheres, float **radius, unsigned char **colors,
+                 int row, int col) {
   float rad = 1.0f;
-  int row = 10, col = 10;
 
 #ifdef BENCHMIN
   row = 30;
