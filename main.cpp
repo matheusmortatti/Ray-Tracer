@@ -6,14 +6,16 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
-//#include "SDL.h"
+#ifdef USE_SDL
+#include "SDL.h"
+#endif // USE_SDL
 #include "omp.h"
 #include "renderer.hpp"
 #include "maths.hpp"
 
 #define WITH_SDL false
 
-void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors, 
+void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 									 float** spheres, float** radius, unsigned char** s_colors,
 									 float** lights,
 									 int& t_size, int& s_size, int& l_size);
@@ -21,8 +23,10 @@ int init_triangles(float** tris, unsigned char** colors);
 int init_spheres(float** spheres, float** radius, unsigned char** colors);
 int init_lights(float** lights);
 
-// void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
-// void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
+#ifdef USE_SDL
+void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer);
+void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color);
+#endif // USE_SDL
 
 int main() {
 	int fov = 90;
@@ -43,65 +47,66 @@ int main() {
 	s_size = init_spheres(&spheres, &radius, &color_sphere);
 
 	// Create thread and start rendering
-	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);	
+	std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size);
 
+	#ifdef USE_SDL
+	if (WITH_SDL)
+	{
+		/**
+		 * Create SDL Window
+		 **/
+		SDL_Window 	  *window 	= NULL;
+		SDL_Renderer  *renderer = NULL;
+		SDL_Texture   *texture 	= NULL;
 
-	// if (WITH_SDL)
-	// {
-	// 	/**
-	// 	 * Create SDL Window
-	// 	 **/
-	// 	SDL_Window 	  *window 	= NULL;
-	// 	SDL_Renderer  *renderer = NULL;
-	// 	SDL_Texture   *texture 	= NULL;
+		init_SDL(window, renderer);
 
-	// 	init_SDL(window, renderer);
+		texture = SDL_CreateTexture (
+					        renderer,
+					        SDL_PIXELFORMAT_ARGB8888,
+					        SDL_TEXTUREACCESS_STREAMING,
+					        CANVAS_WIDTH, CANVAS_HEIGHT );
 
-	// 	texture = SDL_CreateTexture (
-	// 				        renderer,
-	// 				        SDL_PIXELFORMAT_ARGB8888,
-	// 				        SDL_TEXTUREACCESS_STREAMING,
-	// 				        CANVAS_WIDTH, CANVAS_HEIGHT );
+		/**
+		 * Keep the screen up until the user closes it
+		 **/
+		bool quit = false;
+		while(!quit)
+		{
+			SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
+	        SDL_RenderClear( renderer );
 
-	// 	/**
-	// 	 * Keep the screen up until the user closes it
-	// 	 **/
-	// 	bool quit = false;
-	// 	while(!quit)
-	// 	{
-	// 		SDL_SetRenderDrawColor( renderer, 0, 0, 0, SDL_ALPHA_OPAQUE );
-	//         SDL_RenderClear( renderer );
+			SDL_Event event;
+			while(SDL_PollEvent(&event))
+			{
+				switch(event.type)
+				{
+					case SDL_QUIT:
+						quit = true;
+						break;
+				}
+			}
 
-	// 		SDL_Event event;
-	// 		while(SDL_PollEvent(&event))
-	// 		{
-	// 			switch(event.type)
-	// 			{
-	// 				case SDL_QUIT:
-	// 					quit = true;
-	// 					break;
-	// 			}
-	// 		}
+			/* Draw the image to the texture */
+			SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
+			SDL_RenderCopy( renderer, texture, NULL, NULL );
+			SDL_RenderPresent(renderer);
+		}
 
-	// 		/* Draw the image to the texture */
-	// 		SDL_UpdateTexture(texture, NULL, &frameBuffer[0], CANVAS_WIDTH*4);
-	// 		SDL_RenderCopy( renderer, texture, NULL, NULL );
-	// 		SDL_RenderPresent(renderer);
-	// 	}
-
-	// 	SDL_DestroyRenderer( renderer );
-	//     SDL_DestroyWindow( window );
-	//     SDL_Quit();
-	// }
+		SDL_DestroyRenderer( renderer );
+	    SDL_DestroyWindow( window );
+	    SDL_Quit();
+	}
+	#endif // USE_SDL
 
     // Join thread to wait for it to end before exiting
     render_thread.join();
 
     if(!WITH_SDL)
     {
-    	std::ofstream image;		
-    	image.open("image.ppm");		
-	    
+    	std::ofstream image;
+    	image.open("image.ppm");
+
 	    image << "P3\n" << CANVAS_WIDTH << " " << CANVAS_HEIGHT << " " << 255 << std::endl;
 
 	    for(int i = 0; i < CANVAS_HEIGHT; i++) {
@@ -110,7 +115,7 @@ int main() {
 				int z = (int)abs(frameBuffer[fb_offset + 0]),
 					y = (int)abs(frameBuffer[fb_offset + 1]),
 					x = (int)abs(frameBuffer[fb_offset + 2]);
-				
+
 				image << x << " " << y << " " << z << " ";
 			}
 			image << std::endl;
@@ -131,45 +136,47 @@ int main() {
 	return 0;
 }
 
-// void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
-// {
-// 	Uint8 *pixels = (Uint8*)screenSurface->pixels;
-// 	Uint8 *pixel  = pixels + y * screenSurface->pitch + x;
-// 	*pixel = SDL_MapRGB(screenSurface->format, 255, 255, 255);
-// }
+#ifdef USE_SDL
+void put_pixel(SDL_Surface* screenSurface, int x, int y, vec3 color)
+{
+	Uint8 *pixels = (Uint8*)screenSurface->pixels;
+	Uint8 *pixel  = pixels + y * screenSurface->pitch + x;
+	*pixel = SDL_MapRGB(screenSurface->format, 255, 255, 255);
+}
 
-// void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
-// {
+void init_SDL(SDL_Window* &window, SDL_Renderer* &renderer)
+{
 
-// 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
-// 	{
-// 		std::cout << "SDL Could not initialize! SDL Error: " << SDL_GetError() << std::endl;
-// 	}
-// 	else
-// 	{
-// 		window = SDL_CreateWindow(
-// 							"RayTracer", 
-// 							SDL_WINDOWPOS_UNDEFINED, 
-// 							SDL_WINDOWPOS_UNDEFINED,
-// 							CANVAS_WIDTH, 
-// 							CANVAS_HEIGHT,
-// 							SDL_WINDOW_SHOWN);
-// 		if(window == NULL)
-// 		{
-// 			std::cout << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
-// 		}
-// 		else
-// 		{
-// 			renderer = SDL_CreateRenderer (
-// 						        window,
-// 						        -1,
-// 						        SDL_RENDERER_ACCELERATED
-// 						        );
-// 		}
-// 	}
-// }
+	if(SDL_Init(SDL_INIT_VIDEO) < 0)
+	{
+		std::cout << "SDL Could not initialize! SDL Error: " << SDL_GetError() << std::endl;
+	}
+	else
+	{
+		window = SDL_CreateWindow(
+							"RayTracer",
+							SDL_WINDOWPOS_UNDEFINED,
+							SDL_WINDOWPOS_UNDEFINED,
+							CANVAS_WIDTH,
+							CANVAS_HEIGHT,
+							SDL_WINDOW_SHOWN);
+		if(window == NULL)
+		{
+			std::cout << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
+		}
+		else
+		{
+			renderer = SDL_CreateRenderer (
+						        window,
+						        -1,
+						        SDL_RENDERER_ACCELERATED
+						        );
+		}
+	}
+}
+#endif // USE_SDL
 
-void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors, 
+void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 									 float** spheres, float** radius, unsigned char** s_colors,
 									 float** lights,
 									 int& t_size, int& s_size, int& l_size)
@@ -192,7 +199,7 @@ void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 
 		if( line.front() == '/' )
 			continue;
-		
+
 		std::istringstream stream(line);
 		char type;
 		stream >> type;
@@ -205,25 +212,25 @@ void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 			case 's':
 				for(int i = 0; i < 7; i++) {
 					stream >> val;
-					vspheres.push_back( val );	
-				}				
+					vspheres.push_back( val );
+				}
 				break;
-			
+
 			case 't':
 				for(int i = 0; i < 12; i++) {
 					stream >> val;
 					vtriangles.push_back( val );
-				}						
+				}
 				break;
 
 			case 'l':
 				for(int i = 0; i < 3; i++)
 				{
 					stream >> val;
-					vlights.push_back( val );	
-				}			
+					vlights.push_back( val );
+				}
 				break;
-		}		
+		}
 	}
 
 	t_size = vtriangles.size() / 12;
@@ -261,11 +268,11 @@ void ReadSceneFile(std::string path, float** tris, unsigned char** t_colors,
 		(*spheres)[i * 3 + 2] = vspheres[i * 7 + 3];
 		(*s_colors)[i * 3 + 0] = (unsigned char)vspheres[i * 7 + 4];
 		(*s_colors)[i * 3 + 1] = (unsigned char)vspheres[i * 7 + 5];
-		(*s_colors)[i * 3 + 2] = (unsigned char)vspheres[i * 7 + 6];			
+		(*s_colors)[i * 3 + 2] = (unsigned char)vspheres[i * 7 + 6];
 	}
 
 	for( int i = 0; i < l_size; i++ )
-	{		
+	{
 		(*lights)[i * 3 + 0] = vlights[i * 3 + 0];
 		(*lights)[i * 3 + 1] = vlights[i * 3 + 1];
 		(*lights)[i * 3 + 2] = vlights[i * 3 + 2];
@@ -356,7 +363,7 @@ int init_spheres(float** spheres, float** radius, unsigned char** colors)
 			(*colors)[(i * col + j) * 3 + 0] = 0;
 			(*colors)[(i * col + j) * 3 + 1] = 255;
 			(*colors)[(i * col + j) * 3 + 2] = 0;
-		}		
+		}
 	}
 
 	return row*col;
