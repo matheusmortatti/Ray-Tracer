@@ -17,6 +17,7 @@ void render(unsigned char *frameBuffer, int fov, float *tris,
         : frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
   for (int i = 0; i < CANVAS_HEIGHT; i++) {
+#pragma omp target data map(from: frameBuffer[CANVAS_WIDTH*i*4:CANVAS_WIDTH*(i+1)*4])
     for (int j = 0; j < CANVAS_WIDTH; j++) {
 
       // Canvas to world transformation
