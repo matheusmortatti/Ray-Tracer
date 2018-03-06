@@ -1,110 +1,138 @@
 #include "renderer.hpp"
 
+#define TILE_WIDTH  300
+#define TILE_HEIGHT 300
+
 void render(unsigned char *frameBuffer, int fov, float *tris,
             unsigned char *color_tri, int t_size, float *spheres, float *radius,
             unsigned char *color_sphere, int s_size, float *lights,
             int l_size) {
   float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-#pragma omp target map(to                                                      \
-                       : fov, aspectRatio, tris[:NUM_TRIANGLES * 9], color_tri \
-                                               [:NUM_TRIANGLES * 3], spheres   \
-                                               [:NUM_SPHERES * 3], radius      \
-                                               [:NUM_SPHERES], color_sphere    \
-                                               [:NUM_SPHERES * 3], lights      \
-                                               [:NUM_LIGHTS * 3])              \
-    map(from                                                                   \
-        : frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
-#pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
-  for (int i = 0; i < CANVAS_HEIGHT; i++) {
-    for (int j = 0; j < CANVAS_WIDTH; j++) {
+  int tileWidth  = 300;
+  int tileHeight = 300;
 
-      // Canvas to world transformation
-      float px = (2 * ((j + 0.5) / (float)CANVAS_WIDTH) - 1) *
-                 tan(fov * 0.5 * M_PI / 180) * aspectRatio;
-      float py = (1 - 2 * ((i + 0.5) / (float)CANVAS_HEIGHT)) *
-                 tan(fov * 0.5 * M_PI / 180);
-      float rayP[3] = {px, py, -1.0};
-      float orig[3] = {0.0, 0.0, 0.0};
+  unsigned char *tile_buffer = new unsigned char[4 * TILE_WIDTH * TILE_HEIGHT];
+  for(int offy = 0; offy < CANVAS_HEIGHT; offy += tileHeight) {
+    for(int offx = 0; offx < CANVAS_WIDTH; offx += tileWidth) {
+      int height = offy + tileHeight > CANVAS_HEIGHT ? CANVAS_HEIGHT - offy : tileHeight;
+      int width  = offx + tileWidth  > CANVAS_WIDTH  ? CANVAS_WIDTH  - offx : tileWidth;      
 
-      // Ray direction
-      float *dir = sub_vec(rayP, orig);
-      normalize(dir);
+// #pragma omp target map(to                                                           \
+//                        : width, height, fov, aspectRatio, offx, offy,               \
+//                                                tris[:NUM_TRIANGLES * 9], color_tri  \
+//                                                [:NUM_TRIANGLES * 3], spheres        \
+//                                                [:NUM_SPHERES * 3], radius           \
+//                                                [:NUM_SPHERES], color_sphere         \
+//                                                [:NUM_SPHERES * 3], lights           \
+//                                                [:NUM_LIGHTS * 3])                   \
+//     map(from                                                                        \
+//         : tile_buffer[:4 * TILE_WIDTH * TILE_HEIGHT]) device(0)
+#pragma omp parallel for collapse(1) schedule(dynamic) shared(tile_buffer, width, offx, offy)
+      for (int i = 0; i < height; i++) {
+#pragma omp target data map(from: frameBuffer[CANVAS_WIDTH*i*4:CANVAS_WIDTH*(i+1)*4])
+        for (int j = 0; j < width; j++) {
 
-      // Get transformed framebuffer index
-      int fb_offset = CANVAS_WIDTH * i * 4 + j * 4;
+          // Canvas to world transformation
+          float px = (2 * ((j + offx + 0.5) / (float)CANVAS_WIDTH) - 1) *
+                    tan(fov * 0.5 * M_PI / 180) * aspectRatio;
+          float py = (1 - 2 * ((i + offy + 0.5) / (float)CANVAS_HEIGHT)) *
+                    tan(fov * 0.5 * M_PI / 180);
+          float rayP[3] = {px, py, -1.0};
+          float orig[3] = {0.0, 0.0, 0.0};
 
-      // Initialize framebuffer pixel color
-      frameBuffer[fb_offset + 0] = 0;
-      frameBuffer[fb_offset + 1] = 0;
-      frameBuffer[fb_offset + 2] = 0;
-      frameBuffer[fb_offset + 3] = -1;
+          // Ray direction
+          float *dir = sub_vec(rayP, orig);
+          normalize(dir);
 
-      float P[3];
-      int index;
+          // Get transformed framebuffer index
+          int fb_offset = width * i * 4 + j * 4;
 
-      // Check to see if there is an intersection between the camera ray and
-      // all the objects
-      int check = check_intersection(tris, t_size, spheres, radius, s_size, P,
-                                     &index, orig, dir);
-      if (check != 0) {
+          // Initialize framebuffer pixel color
+          tile_buffer[fb_offset + 0] = 0;
+          tile_buffer[fb_offset + 1] = 0;
+          tile_buffer[fb_offset + 2] = 0;
+          tile_buffer[fb_offset + 3] = -1;
 
-        // normal of the object intersected
-        float *n = (check == 1) ? normal(tris + index * 9, tris + index * 9 + 3,
-                                         tris + index * 9 + 6)
-                                : sub_vec(P, spheres + index * 3);
-        normalize(n);
-        // Color of the object intersected
-        unsigned char *color =
-            (check == 1) ? color_tri + index * 3 : color_sphere + index * 3;
+          float P[3];
+          int index;
 
-#if !UNLIT
+          // Check to see if there is an intersection between the camera ray and
+          // all the objects
+          int check = check_intersection(tris, t_size, spheres, radius, s_size, P,
+                                        &index, orig, dir);
+          if (check != 0) {
 
-        // For all the lights in the world, check to see if
-        // the intersection point is lit by any of them
-        for (int l = 0; l < l_size; l++) {
+            // normal of the object intersected
+            float *n = (check == 1) ? normal(tris + index * 9, tris + index * 9 + 3,
+                                            tris + index * 9 + 6)
+                                    : sub_vec(P, spheres + index * 3);
+            normalize(n);
+            // Color of the object intersected
+            unsigned char *color =
+                (check == 1) ? color_tri + index * 3 : color_sphere + index * 3;
 
-          // Ray from point to light
-          float *rayDir = sub_vec(lights + l * 3, P);
-          normalize(rayDir);
+    #if !UNLIT
 
-          // std::cout << (n)[0] << " " << (n)[1] << " " << (n)[2] << std::endl;
+            // For all the lights in the world, check to see if
+            // the intersection point is lit by any of them
+            for (int l = 0; l < l_size; l++) {
 
-          // Calculate angle between the normal and the ray
-          // so we can calculate brightness
-          float angle = dot_product(n, rayDir);
-          angle = angle < 0 ? 0 : angle;
+              // Ray from point to light
+              float *rayDir = sub_vec(lights + l * 3, P);
+              normalize(rayDir);
 
-          float P1[3];
+              // std::cout << (n)[0] << " " << (n)[1] << " " << (n)[2] << std::endl;
 
-          // If there are no objects in the way of the ray, the point is lit by
-          // the light
-          if (check_intersection(tris, t_size, spheres, radius, s_size, P1,
-                                 &index, P, rayDir) == 0) {
-            frameBuffer[fb_offset + 0] = clamp<uint16_t>(
-                frameBuffer[fb_offset + 0] + color[0] * angle, 0, 255);
-            frameBuffer[fb_offset + 1] = clamp<uint16_t>(
-                frameBuffer[fb_offset + 1] + color[1] * angle, 0, 255);
-            frameBuffer[fb_offset + 2] = clamp<uint16_t>(
-                frameBuffer[fb_offset + 2] + color[2] * angle, 0, 255);
+              // Calculate angle between the normal and the ray
+              // so we can calculate brightness
+              float angle = dot_product(n, rayDir);
+              angle = angle < 0 ? 0 : angle;
+
+              float P1[3];
+
+              // If there are no objects in the way of the ray, the point is lit by
+              // the light
+              if (check_intersection(tris, t_size, spheres, radius, s_size, P1,
+                                    &index, P, rayDir) == 0) {
+                tile_buffer[fb_offset + 0] = clamp<uint16_t>(
+                    tile_buffer[fb_offset + 0] + color[0] * angle, 0, 255);
+                tile_buffer[fb_offset + 1] = clamp<uint16_t>(
+                    tile_buffer[fb_offset + 1] + color[1] * angle, 0, 255);
+                tile_buffer[fb_offset + 2] = clamp<uint16_t>(
+                    tile_buffer[fb_offset + 2] + color[2] * angle, 0, 255);
+              }
+              delete[] rayDir;
+            }
+
+    #else
+            tile_buffer[fb_offset + 0] =
+                clamp<int>(tile_buffer[fb_offset + 0] + color[0], 0, 255);
+            tile_buffer[fb_offset + 1] =
+                clamp<int>(tile_buffer[fb_offset + 1] + color[1], 0, 255);
+            tile_buffer[fb_offset + 2] =
+                clamp<int>(tile_buffer[fb_offset + 2] + color[2], 0, 255);
+    #endif
+
+            delete[] n;
           }
-          delete[] rayDir;
+          delete[] dir;
         }
-
-#else
-        frameBuffer[fb_offset + 0] =
-            clamp<int>(frameBuffer[fb_offset + 0] + color[0], 0, 255);
-        frameBuffer[fb_offset + 1] =
-            clamp<int>(frameBuffer[fb_offset + 1] + color[1], 0, 255);
-        frameBuffer[fb_offset + 2] =
-            clamp<int>(frameBuffer[fb_offset + 2] + color[2], 0, 255);
-#endif
-
-        delete[] n;
       }
-      delete[] dir;
+
+      for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+          int fb_offset = CANVAS_WIDTH * (i + offy) * 4 + (j + offx) * 4;
+          int tl_offset = width * i * 4 + j * 4;
+          frameBuffer[fb_offset + 0] = tile_buffer[tl_offset + 0];
+          frameBuffer[fb_offset + 1] = tile_buffer[tl_offset + 1];
+          frameBuffer[fb_offset + 2] = tile_buffer[tl_offset + 2];
+          frameBuffer[fb_offset + 3] = tile_buffer[tl_offset + 3];
+        }
+      }      
     }
   }
+  delete[] tile_buffer;
 }
 
 #pragma omp declare target
