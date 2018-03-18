@@ -6,14 +6,14 @@ void render(unsigned char *frameBuffer, int fov, float *tris,
             int l_size) {
   float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-#pragma omp target map(to                                                      \
-                       : fov, aspectRatio, tris[:NUM_TRIANGLES * 9], color_tri \
-                                               [:NUM_TRIANGLES * 3], spheres   \
-                                               [:NUM_SPHERES * 3], radius      \
-                                               [:NUM_SPHERES], color_sphere    \
-                                               [:NUM_SPHERES * 3], lights      \
-                                               [:NUM_LIGHTS * 3])              \
-    map(from                                                                   \
+#pragma omp target map(to                                               \
+                       : fov, aspectRatio, tris[:t_size * 9], color_tri \
+                                               [:t_size * 3], spheres   \
+                                               [:s_size * 3], radius    \
+                                               [:s_size], color_sphere  \
+                                               [:s_size * 3], lights    \
+                                               [:l_size * 3])           \
+    map(from                                                            \
         : frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
   for (int i = 0; i < CANVAS_HEIGHT; i++) {

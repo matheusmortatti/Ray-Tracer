@@ -8,17 +8,17 @@ import time
 import timeit
 
 BENCHMARKS = [
-    ["-col", "1", "-row", "1"],
-	["-col", "30", "-row", "30"],
-    ["-col", "70", "-row", "70"],
-    ["-col", "100", "-row", "100"],
+    #["-col", "1", "-row", "1"],
+	["-col", "30", "-row", "30"]
+    #["-col", "70", "-row", "70"],
+    #["-col", "100", "-row", "100"],
 ]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 prot_dir = dir_path
 
-TIMES = 3  # Number of time the execution is repeated
-NB_NODE = [1, 2, 3, 4]
+TIMES = 1  # Number of time the execution is repeated
+NB_NODE = [4]
 
 SLEEP_TIME = 0
 CLEAN = False
@@ -172,17 +172,23 @@ for nb_node in NB_NODE:
 
                 logfile = open(logpath, mode='r')
                 t_parallel = 0
+                up = 0
+                down = 0
                 for line in logfile:
                     if line.startswith("Parallel Time"):
-                        t_parallel = float(line.split()[-1].rsplit('s')[0])
+                        t_parallel = float(line.split()[-1].rsplit(' ')[0])
+                    if line.startswith("Target Cloud RTL --> Uploading"):
+                        up = float(line.split()[-1].rsplit('s')[0])
+                    if line.startswith("Target Cloud RTL --> Downloading"):
+                        down = float(line.split()[-1].rsplit('s')[0])
                 logfile.close()
 
                 parallel.append(t_parallel)
                 serial.append(total[i] - parallel[i])
 
                 # Not computed in intra-cluster mode
-                upload.append(0)
-                download.append(0)
+                upload.append(up)
+                download.append(down)
 
             print("Median: " + str(np.mean(total)))
             print("Variance: " + str(np.var(total)))
