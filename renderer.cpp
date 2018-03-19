@@ -6,18 +6,24 @@ void render(unsigned char *frameBuffer, int fov, float *tris,
             int l_size) {
   float aspectRatio = (float)CANVAS_WIDTH / (float)CANVAS_HEIGHT;
 
-#pragma omp target map(to                                               \
-                       : fov, aspectRatio, tris[:t_size * 9], color_tri \
-                                               [:t_size * 3], spheres   \
-                                               [:s_size * 3], radius    \
-                                               [:s_size], color_sphere  \
-                                               [:s_size * 3], lights    \
-                                               [:l_size * 3])           \
-    map(from                                                            \
-        : frameBuffer[:4 * CANVAS_HEIGHT * CANVAS_WIDTH]) device(0)
+// #pragma omp target map(                                                        \
+//     to : fov, aspectRatio,                                                     \
+//     tris[ : t_size * 9],                                                       \
+//           color_tri[ : t_size * 3],                                            \
+//                      spheres[ : s_size * 3],                                   \
+//                               radius[ : s_size],                               \
+//                                       color_sphere[ : s_size * 3],             \
+//                                                     lights[ : l_size *         \
+//                                                             3]) map(           \
+//                                                         from : frameBuffer     \
+//                                                         [ : 4 *                \
+//                                                           CANVAS_HEIGHT        \
+//                                                               *CANVAS_WIDTH])  \
+//                                                             device(0)
 #pragma omp parallel for collapse(1) schedule(dynamic) shared(frameBuffer)
   for (int i = 0; i < CANVAS_HEIGHT; i++) {
-#pragma omp target data map(from: frameBuffer[CANVAS_WIDTH*i*4:CANVAS_WIDTH*(i+1)*4])
+#pragma omp target data map(from : frameBuffer[CANVAS_WIDTH *i *               \
+                                               4 : CANVAS_WIDTH *(i + 1) * 4])
     for (int j = 0; j < CANVAS_WIDTH; j++) {
 
       // Canvas to world transformation
@@ -104,6 +110,34 @@ void render(unsigned char *frameBuffer, int fov, float *tris,
         delete[] n;
       }
       delete[] dir;
+    }
+  }
+}
+
+void render_moving_camera(float speed[3], int iterations,
+                          unsigned char *frameBuffer, int fov, float *tris,
+                          unsigned char *color_tri, int t_size, float *spheres,
+                          float *radius, unsigned char *color_sphere,
+                          int s_size, float *lights, int l_size) {
+
+  for (int i = 0; i < iterations; i++) {
+    render(frameBuffer, fov, tris, color_tri, t_size, spheres, radius,
+           color_sphere, s_size, lights, l_size);
+
+    for (int j = 0; j < t_size * 9; j += 3) {
+      tris[j + 0] -= speed[0];
+      tris[j + 1] -= speed[1];
+      tris[j + 2] -= speed[2];
+    }
+    for (int j = 0; j < s_size * 3; j += 3) {
+      spheres[j + 0] -= speed[0];
+      spheres[j + 1] -= speed[1];
+      spheres[j + 2] -= speed[2];
+    }
+    for (int j = 0; j < l_size * 3; j += 3) {
+      lights[j + 0] -= speed[0];
+      lights[j + 1] -= speed[1];
+      lights[j + 2] -= speed[2];
     }
   }
 }

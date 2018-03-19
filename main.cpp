@@ -101,9 +101,9 @@ int main(int argc, char **argv) {
   s_size = init_spheres(&spheres, &radius, &color_sphere, row, col);
 
   // Create thread and start rendering
-  std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size,
-                            spheres, radius, color_sphere, s_size, lights,
-                            l_size);
+  std::thread render_thread(render_moving_camera, new float[3]{0, 0, -5}, 5,
+                            frameBuffer, fov, tris, color_tri, t_size, spheres,
+                            radius, color_sphere, s_size, lights, l_size);
 
 #ifdef USE_SDL
   if (!no_display) {
@@ -156,8 +156,8 @@ int main(int argc, char **argv) {
     std::ofstream image;
     image.open("image.ppm");
 
-    image << "P3\n"
-          << CANVAS_WIDTH << " " << CANVAS_HEIGHT << " " << 255 << std::endl;
+    image << "P3\n" << CANVAS_WIDTH << " " << CANVAS_HEIGHT << " " << 255
+          << std::endl;
 
     for (int i = 0; i < CANVAS_HEIGHT; i++) {
       for (int j = 0; j < CANVAS_WIDTH; j++) {
@@ -313,26 +313,10 @@ int init_triangles(float **tris, unsigned char **colors) {
   (*colors) = new unsigned char[t_size];
 
   float v[2][9] = {{
-                       10.0,
-                       -5.0,
-                       -2.0,
-                       10.0,
-                       -5.0,
-                       -10.0,
-                       -10.0,
-                       -5.0,
-                       -2.0,
+                       10.0, -5.0, -2.0, 10.0, -5.0, -10.0, -10.0, -5.0, -2.0,
                    },
                    {
-                       -10.0,
-                       -5.0,
-                       -2.0,
-                       10.0,
-                       -5.0,
-                       -10.0,
-                       -10.0,
-                       -5.0,
-                       -10.0,
+                       -10.0, -5.0, -2.0, 10.0, -5.0, -10.0, -10.0, -5.0, -10.0,
                    }};
 
   unsigned char c[2][3] = {{255, 125, 125}, {255, 125, 125}};
