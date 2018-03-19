@@ -8,10 +8,10 @@ import time
 import timeit
 
 BENCHMARKS = [
-    #["-col", "1", "-row", "1"],
-	["-col", "30", "-row", "30"]
-    #["-col", "70", "-row", "70"],
-    #["-col", "100", "-row", "100"],
+    #("BENCHMIN", ["-col", "1", "-row", "1"]),
+	("BENCHMID", ["-col", "30", "-row", "30"]),
+    #("BENCHLARGE", ["-col", "70", "-row", "70"]),
+    #("BENCHXLARGE", ["-col", "100", "-row", "100"]),
 ]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -20,7 +20,7 @@ prot_dir = dir_path
 TIMES = 1  # Number of time the execution is repeated
 NB_NODE = [4]
 
-SLEEP_TIME = 0
+SLEEP_TIME = 0.1
 CLEAN = False
 
 PROFILE_NAME = "raytracer-logs"
@@ -112,10 +112,10 @@ print("- EXPERIMENTS STARTING")
 for nb_node in NB_NODE:
     print("-- Compute on {} nodes".format(nb_node))
 
-    for benchmark in BENCHMARKS:
-        print("--- CCS of benchmark {}".format(benchmark))        
+    for (bench_name, bench_args) in BENCHMARKS:
+        print("--- CCS of benchmark {}".format(bench_name))
 
-        csv_name = "result_{}nodes-{}.csv".format(nb_node, benchmark)
+        csv_name = "result_{}nodes-{}.csv".format(nb_node, bench_name)
         csv = open(os.path.join(log_dir, csv_name), mode='w')
         csv.write(',,')
         for i in range(1, TIMES + 1):
@@ -129,7 +129,7 @@ for nb_node in NB_NODE:
                                     "cloud_{}.ini".format(nb_node))
             if not os.path.exists(conf_file):
                 print("Warning - Configuration file does not exist: " + conf_file)
-            os.environ['OMPCLOUD_CONF_PATH'] = conf_file
+            #os.environ['OMPCLOUD_CONF_PATH'] = conf_file
 
             if CLEAN:
                 try:
@@ -147,16 +147,17 @@ for nb_node in NB_NODE:
             download = []
 
             for i in range(TIMES):
-                log = "log-{}nodes-{}-{}.{}.out".format(nb_node, benchmark,
+                log = "log-{}nodes-{}-{}.{}.out".format(nb_node, bench_name,
                                                         conf_dir, i)
                 logpath = os.path.join(log_dir, log)
                 logfile = open(logpath, mode='w')
 
                 start = timeit.default_timer()
-                try:                    
-                    subprocess.run(['./raytracer', benchmark[0], benchmark[1], benchmark[2], benchmark[3], '-n'],
+                try:
+                    subprocess.run(['./raytracer', bench_args[0], bench_args[1],
+                                    bench_args[2], bench_args[3], '-n'],
                                    stdout=logfile, stderr=logfile, check=True)
-                    time.sleep(0.1)
+                    time.sleep(SLEEP_TIME)
                 except subprocess.CalledProcessError as e:
                     if e.output is None:
                         print("Execution error")
