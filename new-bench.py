@@ -129,7 +129,7 @@ for nb_node in NB_NODE:
                                     "cloud_{}.ini".format(nb_node))
             if not os.path.exists(conf_file):
                 print("Warning - Configuration file does not exist: " + conf_file)
-            #os.environ['OMPCLOUD_CONF_PATH'] = conf_file
+            os.environ['OMPCLOUD_CONF_PATH'] = conf_file
 
             if CLEAN:
                 try:
