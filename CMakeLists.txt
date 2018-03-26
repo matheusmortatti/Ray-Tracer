@@ -34,7 +34,7 @@ endif()
 # -> BENCHMAX: benchmark hard mode (~15 min)
 ###################################################
 #add_definitions(-DUNLIT)
-add_definitions(-DBENCHMIN)
+#add_definitions(-DBENCHMIN)
 #add_definitions(-DBENCHMID)
 #add_definitions(-DBENCHMAX)
 
