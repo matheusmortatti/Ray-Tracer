@@ -18,6 +18,15 @@ void render(unsigned char *frameBuffer, int fov, float *tris,
             unsigned char *color_sphere, int s_size, float *lights, int l_size);
 
 #pragma omp declare target
+bool CastRay(float orig[], float dir[], float *tris,
+             unsigned char *color_tri, int t_size, float *spheres, float *radius,
+             unsigned char *color_sphere, int s_size, float *lights,
+             int l_size, unsigned char color[], int depth);
+
+void fresnel(float I[], float N[], float *ior, float *kr);
+
+void refract(float I[], float N[], float ior, float res[3]);
+
 int check_intersection(float *tris, int t_size, float *spheres, float *radius,
                        int s_size, float *P, int *index, float *orig,
                        float *dir);
