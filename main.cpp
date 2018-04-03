@@ -107,6 +107,7 @@ int main(int argc, char **argv)
                 &lights, t_size, s_size, l_size);
 
   s_size = init_spheres(&spheres, &radius, &color_sphere, row, col);
+  t_size = init_triangles(&tris, &color_tri);
 
   // Create thread and start rendering
   std::thread render_thread(render, frameBuffer, fov, tris, color_tri, t_size,
@@ -342,53 +343,45 @@ void ReadSceneFile(std::string path, float **tris, unsigned char **t_colors,
 
 int init_triangles(float **tris, unsigned char **colors)
 {
-  int t_size = 2;
+  int t_size = 5;
+  int scale = 20;
 
-  (*tris) = new float[t_size * 9];
-  (*colors) = new unsigned char[t_size];
-
-  float v[2][9] = {{
-                       10.0,
-                       -5.0,
-                       -2.0,
-                       10.0,
-                       -5.0,
-                       -10.0,
-                       -10.0,
-                       -5.0,
-                       -2.0,
-                   },
-                   {
-                       -10.0,
-                       -5.0,
-                       -2.0,
-                       10.0,
-                       -5.0,
-                       -10.0,
-                       -10.0,
-                       -5.0,
-                       -10.0,
-                   }};
-
-  unsigned char c[2][3] = {{255, 125, 125}, {255, 125, 125}};
+  (*tris) = new float[t_size * t_size * 9 * 2];
+  (*colors) = new unsigned char[t_size * t_size * 3 * 2];
 
   for (int i = 0; i < t_size; i++)
   {
-    (*tris)[i * 9 + 0] = v[i][0];
-    (*tris)[i * 9 + 1] = v[i][1];
-    (*tris)[i * 9 + 2] = v[i][2];
-    (*tris)[i * 9 + 3] = v[i][3];
-    (*tris)[i * 9 + 4] = v[i][4];
-    (*tris)[i * 9 + 5] = v[i][5];
-    (*tris)[i * 9 + 6] = v[i][6];
-    (*tris)[i * 9 + 7] = v[i][7];
-    (*tris)[i * 9 + 8] = v[i][8];
-    (*colors)[i * 3 + 0] = c[i][0];
-    (*colors)[i * 3 + 1] = c[i][1];
-    (*colors)[i * 3 + 2] = c[i][2];
+    for (int j = 0; j < t_size; j++)
+    {
+      (*tris)[(i * t_size + j) * 18 + 0] = (j * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 1] = (i * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 2] = -100;
+      (*tris)[(i * t_size + j) * 18 + 3] = ((j * 2 - t_size) / 2 * scale - scale);
+      (*tris)[(i * t_size + j) * 18 + 4] = (i * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 5] = -100;
+      (*tris)[(i * t_size + j) * 18 + 6] = (j * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 7] = ((i * 2 - t_size) / 2 * scale - scale);
+      (*tris)[(i * t_size + j) * 18 + 8] = -100;
+      (*colors)[(i * t_size + j) * 6 + 0] = rand() % 256;
+      (*colors)[(i * t_size + j) * 6 + 1] = rand() % 256;
+      (*colors)[(i * t_size + j) * 6 + 2] = rand() % 256;
+
+      (*tris)[(i * t_size + j) * 18 + 9] = (j * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 10] = ((i * 2 - t_size) / 2 * scale - scale);
+      (*tris)[(i * t_size + j) * 18 + 11] = -100;
+      (*tris)[(i * t_size + j) * 18 + 12] = ((j * 2 - t_size) / 2 * scale - scale);
+      (*tris)[(i * t_size + j) * 18 + 13] = (i * 2 - t_size) / 2 * scale;
+      (*tris)[(i * t_size + j) * 18 + 14] = -100;
+      (*tris)[(i * t_size + j) * 18 + 15] = (j * 2 - t_size) / 2 * scale - scale;
+      (*tris)[(i * t_size + j) * 18 + 16] = ((i * 2 - t_size) / 2 * scale - scale);
+      (*tris)[(i * t_size + j) * 18 + 17] = -100;
+      (*colors)[(i * t_size + j) * 6 + 3] = rand() % 256;
+      (*colors)[(i * t_size + j) * 6 + 4] = rand() % 256;
+      (*colors)[(i * t_size + j) * 6 + 5] = rand() % 256;
+    }
   }
 
-  return t_size;
+  return t_size * t_size * 2;
 }
 
 int init_spheres(float **spheres, float **radius, unsigned char **colors,
@@ -421,7 +414,7 @@ int init_spheres(float **spheres, float **radius, unsigned char **colors,
     {
       (*spheres)[(i * col + j) * 3 + 0] = 2 * (j * 2 - col) * rad;
       (*spheres)[(i * col + j) * 3 + 1] = 2 * (i * 2 - row) * rad;
-      (*spheres)[(i * col + j) * 3 + 2] = -50;
+      (*spheres)[(i * col + j) * 3 + 2] = -50 + rand() % 3 - 1;
       (*radius)[(i * col + j)] = rad;
 
       (*colors)[(i * col + j) * 3 + 0] = 0;   //rand() % 256;

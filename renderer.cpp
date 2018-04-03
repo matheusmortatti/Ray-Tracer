@@ -96,9 +96,6 @@ bool CastRay(float orig[], float dir[], float *tris,
       normal(tris + index * 9, tris + index * 9 + 3, tris + index * 9 + 6,
              n);
       copy_array<unsigned char>(obj_color, color_tri + index * 3, 3);
-      // obj_color[0] *= P[0] / 100;
-      // obj_color[1] *= P[1] / 100;
-      // obj_color[2] *= P[2] / 100;
       break;
     case 2:
       sub_vec(P, spheres + index * 3, n);
@@ -123,27 +120,7 @@ bool CastRay(float orig[], float dir[], float *tris,
       // so we can calculate brightness
       float angle = dot_product(n, rayDir);
       angle = angle < 0 ? 0 : angle;
-      unsigned char specular[3] = {0, 0, 0};
-
-      float zero[3] = {0, 0, 0};
-      float ml[3];
-      sub_vec(zero, rayDir, ml);
-      float r[3];
-      reflect(ml, n, r);
-      float ndir[3];
-      sub_vec(zero, dir, ndir);
-      float lang = dot_product(r, ndir);
-      lang = lang < 0 ? 0 : lang;
-      float s = pow(lang, SPEC_HIGHLIGHT);
-
-      specular[0] = obj_color[0] * s;
-      specular[1] = obj_color[1] * s;
-      specular[2] = obj_color[2] * s;
-
       float P1[3];
-      float fColor[3] = {specular[0] * KS + obj_color[0] * KD,
-                         specular[1] * KS + obj_color[1] * KD,
-                         specular[2] * KS + obj_color[2] * KD};
 
       // If there are no objects in the way of the ray, the point is lit by
       // the light
@@ -151,11 +128,11 @@ bool CastRay(float orig[], float dir[], float *tris,
                              &index, P, rayDir) == 0)
       {
         color[0] = clamp<uint16_t>(
-            color[0] + fColor[0] * angle, 0, 255);
+            color[0] + obj_color[0] * angle, 0, 255);
         color[1] = clamp<uint16_t>(
-            color[1] + fColor[1] * angle, 0, 255);
+            color[1] + obj_color[1] * angle, 0, 255);
         color[2] = clamp<uint16_t>(
-            color[2] + fColor[2] * angle, 0, 255);
+            color[2] + obj_color[2] * angle, 0, 255);
       }
     }
 
@@ -164,14 +141,14 @@ bool CastRay(float orig[], float dir[], float *tris,
     {
       bool outside = dot_product(n, dir) < 0;
       unsigned char refl_color[3];
-      unsigned char refr_color[3];
+      unsigned char refr_color[3] = {0, 0, 0};
       float refl_vec[3];
-      reflect(dir, n, refl_vec);
       float kr, kt;
-      float ior = 0.2;
+      float ior = 1;
       fresnel(dir, n, &ior, &kr);
       kt = 1 - kr;
 
+      reflect(dir, n, refl_vec);
       CastRay(P, refl_vec, tris, color_tri, t_size, spheres, radius, color_sphere, s_size, lights, l_size, refl_color, depth + 1);
 
       // Compute refraction
