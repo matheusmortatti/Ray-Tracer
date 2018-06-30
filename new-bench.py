@@ -9,16 +9,16 @@ import timeit
 
 BENCHMARKS = [
     #("BENCHMIN", ["-col", "1", "-row", "1"]),
-	("BENCHMID", ["-col", "30", "-row", "30"]),
-    #("BENCHLARGE", ["-col", "70", "-row", "70"]),
-    #("BENCHXLARGE", ["-col", "100", "-row", "100"]),
+	("BENCHMID", ["-col", "30", "-row", "30", "-n"]),
+    ("BENCHLARGE", ["-col", "70", "-row", "70", "-n"]),
+    ("BENCHXLARGE", ["-col", "100", "-row", "100", "-n"]),
 ]
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 prot_dir = dir_path
 
-TIMES = 1  # Number of time the execution is repeated
-NB_NODE = [4]
+TIMES = 3  # Number of time the execution is repeated
+NB_NODE = [16, 8, 4, 2, 1]
 
 SLEEP_TIME = 0.1
 CLEAN = False
